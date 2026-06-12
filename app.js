@@ -268,10 +268,11 @@ const processCheckout = () => {
         if (prodIndex > -1) products[prodIndex].stock -= cartItem.qty;
     });
 
-    // Catat Transaksi
+    // Catat Transaksi dengan Timestamp Unix Akurat
     const hppTotal = cart.reduce((sum, item) => sum + (item.hpp * item.qty), 0);
     const trx = {
         id: `TRX-${Date.now()}`,
+        timestamp: Date.now(),
         date: new Date().toLocaleString('id-ID'),
         items: [...cart],
         total: total,
@@ -321,10 +322,9 @@ const renderKelolaBarang = () => {
     const tbody = document.getElementById('kelolaTableBody');
     tbody.innerHTML = '';
     
-    let totalModalSemuaBarang = 0; // Variabel penampung nilai modal total
+    let totalModalSemuaBarang = 0;
 
     products.forEach((p, idx) => {
-        // Akumulasi perhitungan HPP x Stok ke total modal
         totalModalSemuaBarang += (p.hpp * p.stock);
 
         tbody.innerHTML += `
@@ -346,7 +346,6 @@ const renderKelolaBarang = () => {
         `;
     });
 
-    // Menampilkan total modal ke elemen HTML
     const totalModalEl = document.getElementById('totalModalBarang');
     if (totalModalEl) {
         totalModalEl.innerText = formatRupiah(totalModalSemuaBarang);
@@ -365,14 +364,12 @@ const saveProduct = (e) => {
     };
 
     if (idObj === "") {
-        // Tambah baru, cek duplikasi SKU
         if (products.some(p => p.id === itemObj.id)) {
             return Swal.fire({ icon: 'error', title: 'Gagal', text: 'SKU sudah terdaftar!' });
         }
         products.push(itemObj);
         Toast.fire({ icon: 'success', title: 'Barang berhasil ditambahkan' });
     } else {
-        // Update data lama
         const idx = parseInt(idObj);
         products[idx] = itemObj;
         Toast.fire({ icon: 'success', title: 'Barang berhasil diupdate' });
@@ -417,24 +414,61 @@ const resetProductForm = () => {
     document.getElementById('editId').value = '';
 };
 
-// --- LAPORAN & DASHBOARD ---
+// --- LAPORAN & DASHBOARD PERIODIK (HARIAN, MINGGUAN, BULANAN) ---
 const calculateDashboard = () => {
-    let totalOmset = 0;
-    let totalHpp = 0;
-    let totalLaba = 0;
+    let dayOmset = 0, dayHpp = 0, dayLaba = 0;
+    let weekOmset = 0, weekHpp = 0, weekLaba = 0;
+    let monthOmset = 0, monthHpp = 0, monthLaba = 0;
+
+    const now = new Date();
+    // Ambil batas penanda waktu (Midnight)
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const weekStart = todayStart - (7 * 24 * 60 * 60 * 1000); // Batas 7 hari ke belakang
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); // Batas tanggal 1 bulan berjalan
 
     transactions.forEach(t => {
-        totalOmset += t.total;
-        totalHpp += t.hpp;
-        totalLaba += t.laba;
+        // Fallback mengambil timestamp jika transaksi lama belum memilikinya
+        const ts = t.timestamp || parseInt(t.id.split('-')[1]) || todayStart;
+
+        // 1. Klasifikasi Harian (Hari ini)
+        if (ts >= todayStart) {
+            dayOmset += t.total;
+            dayHpp += t.hpp;
+            dayLaba += t.laba;
+        }
+        // 2. Klasifikasi Mingguan (7 hari ke belakang)
+        if (ts >= weekStart) {
+            weekOmset += t.total;
+            weekHpp += t.hpp;
+            weekLaba += t.laba;
+        }
+        // 3. Klasifikasi Bulanan (Bulan berjalan)
+        if (ts >= monthStart) {
+            monthOmset += t.total;
+            monthHpp += t.hpp;
+            monthLaba += t.laba;
+        }
     });
 
-    const marginProfit = totalOmset > 0 ? Math.round((totalLaba / totalOmset) * 100) : 0;
+    const calcMargin = (laba, omset) => omset > 0 ? Math.round((laba / omset) * 100) : 0;
 
-    document.getElementById('repOmset').innerText = formatRupiah(totalOmset);
-    document.getElementById('repHpp').innerText = formatRupiah(totalHpp);
-    document.getElementById('repLaba').innerText = formatRupiah(totalLaba);
-    document.getElementById('repMargin').innerText = `${marginProfit}%`;
+    // Render Data Tampilan Harian
+    document.getElementById('dayOmset').innerText = formatRupiah(dayOmset);
+    document.getElementById('dayHpp').innerText = formatRupiah(dayHpp);
+    document.getElementById('dayLaba').innerText = formatRupiah(dayLaba);
+    document.getElementById('dayMargin').innerText = `${calcMargin(dayLaba, dayOmset)}%`;
+
+    // Render Data Tampilan Mingguan
+    document.getElementById('weekOmset').innerText = formatRupiah(weekOmset);
+    document.getElementById('weekHpp').innerText = formatRupiah(weekHpp);
+    document.getElementById('weekLaba').innerText = formatRupiah(weekLaba);
+    document.getElementById('weekMargin').innerText = `${calcMargin(weekLaba, weekOmset)}%`;
+
+    // Render Data Tampilan Bulanan
+    document.getElementById('monthOmset').innerText = formatRupiah(monthOmset);
+    document.getElementById('monthHpp').innerText = formatRupiah(monthHpp);
+    document.getElementById('monthLaba').innerText = formatRupiah(monthLaba);
+    document.getElementById('monthMargin').innerText = `${calcMargin(monthLaba, monthOmset)}%`;
 
     renderRiwayat();
 };
