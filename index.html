@@ -209,9 +209,12 @@
             </div>
 
             <div id="view-laporan" class="view-section hidden space-y-6">
-                <div class="flex justify-between items-center bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700">
+                <div class="flex justify-between items-center bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 flex-wrap gap-4">
                     <h2 class="text-xl font-bold">Dashboard & Laporan</h2>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2 flex-wrap">
+                        <button id="btnResetLaporan" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow flex items-center gap-1.5">
+                            <i class="fas fa-user-shield"></i> Reset Laporan
+                        </button>
                         <button id="btnExportExcel" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow">
                             <i class="fas fa-file-excel mr-1"></i> Excel
                         </button>
@@ -222,10 +225,8 @@
                 </div>
 
                 <div id="reportContainer" class="space-y-6">
-                    <!-- Dashboard Analisis Periodik Modifikasi -->
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         
-                        <!-- Box Harian -->
                         <div class="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
                             <div>
                                 <div class="flex items-center gap-2 mb-3 text-blue-600 dark:text-blue-400 font-bold border-b dark:border-gray-700 pb-2">
@@ -242,7 +243,6 @@
                             </div>
                         </div>
 
-                        <!-- Box Mingguan -->
                         <div class="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
                             <div>
                                 <div class="flex items-center gap-2 mb-3 text-teal-600 dark:text-teal-400 font-bold border-b dark:border-gray-700 pb-2">
@@ -259,7 +259,6 @@
                             </div>
                         </div>
 
-                        <!-- Box Bulanan -->
                         <div class="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
                             <div>
                                 <div class="flex items-center gap-2 mb-3 text-purple-600 dark:text-purple-400 font-bold border-b dark:border-gray-700 pb-2">
@@ -278,7 +277,6 @@
 
                     </div>
 
-                    <!-- Tabel Riwayat -->
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
                         <h3 class="text-lg font-bold mb-4 pb-2 border-b dark:border-gray-700">Riwayat Transaksi</h3>
                         <div class="overflow-x-auto">
@@ -288,7 +286,7 @@
                                         <th class="p-3 border-b dark:border-gray-600">Waktu</th>
                                         <th class="p-3 border-b dark:border-gray-600">ID Transaksi</th>
                                         <th class="p-3 border-b dark:border-gray-600">Total Item</th>
-                                        <th class="p-3 border-b dark:border-gray-600">Omset</th>
+                                        <th class="p-3 border-b dark:border-gray-600 font-bold">Omset</th>
                                     </tr>
                                 </thead>
                                 <tbody id="riwayatTableBody" class="text-sm divide-y dark:divide-gray-700">
