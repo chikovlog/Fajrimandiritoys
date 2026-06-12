@@ -20,28 +20,35 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
     <style>
-        /* Gaya Khusus Cetak Struk Printer Thermal Local / Wireless */
+        /* Kontainer khusus cetak - tersembunyi di layar biasa */
+        #printContainer {
+            display: none;
+        }
+
+        /* Gaya Khusus Cetak Struk Printer Thermal Bawaan Sistem */
         @media print {
             body * {
-                visibility: hidden;
+                display: none !important;
             }
-            #thermalPaper, #thermalPaper * {
-                visibility: visible;
+            #printContainer, #printContainer * {
+                display: block !important;
             }
-            #thermalPaper {
+            #printContainer {
                 position: absolute;
                 left: 0;
                 top: 0;
                 width: 100% !important;
-                border: none !important;
-                box-shadow: none !important;
                 padding: 0 !important;
                 margin: 0 !important;
+                background: white;
+                color: black;
             }
         }
     </style>
 </head>
 <body class="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 transition-colors duration-300 min-h-screen flex flex-col">
+
+    <div id="printContainer" class="font-mono text-xs p-2"></div>
 
     <header class="bg-white dark:bg-gray-800 shadow-md p-4 flex justify-between items-center sticky top-0 z-50 transition-colors">
         <div class="flex items-center gap-3">
@@ -120,6 +127,15 @@
                         <input type="text" id="searchProduct" placeholder="Cari nama barang atau SKU..." class="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div id="productList" class="p-4 grid grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto flex-grow items-start content-start">
+                    </div>
+
+                    <div class="border-t dark:border-gray-700 bg-gray-50/70 dark:bg-gray-800/60 p-3 h-52 flex flex-col">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <span class="text-xs font-bold text-gray-500 uppercase tracking-wide"><i class="fas fa-history mr-1"></i> Aktivitas Penjualan Hari Ini</span>
+                            <span id="kasirHistoryCount" class="text-[11px] bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-2 py-0.5 rounded-full font-bold">0</span>
+                        </div>
+                        <div id="kasirRealtimeHistoryList" class="flex-grow overflow-y-auto space-y-1.5 text-[11px]">
+                            </div>
                     </div>
                 </div>
 
@@ -280,12 +296,6 @@
                         <button id="btnResetLaporan" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow flex items-center gap-1.5">
                             <i class="fas fa-user-shield"></i> Reset Laporan
                         </button>
-                        <button id="btnExportExcel" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow">
-                            <i class="fas fa-file-excel mr-1"></i> Excel
-                        </button>
-                        <button id="btnExportPdf" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow">
-                            <i class="fas fa-file-pdf mr-1"></i> PDF
-                        </button>
                     </div>
                 </div>
 
@@ -341,7 +351,7 @@
                     </div>
 
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
-                        <h3 class="text-lg font-bold mb-4 pb-2 border-b dark:border-gray-700">Riwayat Transaksi</h3>
+                        <h3 class="text-lg font-bold mb-4 pb-2 border-b dark:border-gray-700">Riwayat Transaksi Global</h3>
                         <div class="overflow-x-auto">
                             <table class="w-full text-left border-collapse">
                                 <thead>
