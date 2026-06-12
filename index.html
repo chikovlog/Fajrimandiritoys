@@ -3,10 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem POS Lengkap</title>
+    <title>Fajri Mandiri Toys</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Tambahan Library untuk Capture Layar (Screenshot) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    
     <style>
         @media print { .no-print { display: none !important; } #printContainer { display: block !important; } }
         #printContainer { display: none; padding: 10px; font-family: monospace; width: 250px; }
@@ -16,6 +20,9 @@
     <div id="printContainer"></div>
 
     <div id="app" class="p-6">
+        <!-- Tambahan Nama Toko / Logo -->
+        <h1 class="text-3xl font-bold mb-6 text-gray-800"><i class="fas fa-store text-blue-600"></i> Fajri Mandiri Toys</h1>
+
         <div class="mb-6 flex gap-4">
             <button onclick="switchView('kasir')" class="bg-blue-500 text-white px-4 py-2 rounded">Kasir</button>
             <button onclick="switchView('laporan')" class="bg-green-500 text-white px-4 py-2 rounded">Laporan</button>
@@ -27,8 +34,20 @@
                 <div>
                     <h2 class="font-bold mb-2">Produk</h2>
                     <div id="productGrid" class="grid grid-cols-2 gap-2"></div>
-                    <h2 class="font-bold mt-6 mb-2">History Penjualan Hari Ini</h2>
-                    <div id="kasirHistory" class="bg-white p-4 rounded shadow"></div>
+                    
+                    <!-- Pembungkus Khusus Capture Area Laporan Harian -->
+                    <div id="captureArea" class="bg-white p-4 rounded shadow mt-6 border">
+                        <div class="flex justify-between items-center mb-4">
+                            <h2 class="font-bold">Aktivitas Penjualan Hari Ini</h2>
+                            <!-- Tombol Capture -->
+                            <button onclick="captureReport()" class="bg-gray-800 hover:bg-black text-white px-3 py-1 rounded text-xs font-bold shadow no-print">
+                                <i class="fas fa-camera"></i> Capture Laporan
+                            </button>
+                        </div>
+                        <div id="kasirHistory" class="max-h-40 overflow-y-auto text-sm mb-3"></div>
+                        <!-- Statistik Total Harian -->
+                        <div id="kasirStats" class="border-t border-gray-300 pt-3 font-bold text-blue-600 text-sm"></div>
+                    </div>
                 </div>
                 <div class="bg-white p-4 rounded shadow">
                     <h2 class="font-bold mb-4">Keranjang</h2>
@@ -40,7 +59,7 @@
 
         <div id="view-laporan" class="view hidden">
             <h2 class="font-bold text-xl mb-4">Riwayat Transaksi</h2>
-            <table class="w-full bg-white shadow rounded">
+            <table class="w-full bg-white shadow rounded text-left">
                 <thead><tr class="border-b"><th class="p-2">Waktu</th><th class="p-2">Total</th><th class="p-2">Aksi</th></tr></thead>
                 <tbody id="riwayatTableBody"></tbody>
             </table>
