@@ -1,9 +1,8 @@
 // --- STATE & DATA AWAL ---
 let currentUser = null;
 let theme = localStorage.getItem('theme') || 'light';
-let receiptWidthFormat = '58mm'; // Default printer thermal
+let receiptWidthFormat = '58mm';
 
-// Data Barang Awal
 let products = JSON.parse(localStorage.getItem('pos_products')) || [
     { id: 'SKU-001', name: 'Layanan Cuci Komplit', hpp: 3000, price: 6000, stock: 999 },
     { id: 'SKU-002', name: 'Deterjen Cair Premium', hpp: 15000, price: 25000, stock: 50 },
@@ -27,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme(theme);
     checkLoginSession();
     setupEventListeners();
-    renderReceiptPreview(); // Inisialisasi struk kosong
+    renderReceiptPreview();
 });
 
 const applyTheme = (currentTheme) => {
@@ -119,7 +118,6 @@ const setupEventListeners = () => {
     document.getElementById('uangBayar').addEventListener('input', () => { calculateChange(); renderReceiptPreview(); });
     document.getElementById('diskonTrx').addEventListener('input', () => { updateCartUI(); renderReceiptPreview(); });
     
-    // Live text listener pelanggan
     document.getElementById('custName').addEventListener('input', renderReceiptPreview);
     document.getElementById('custPhone').addEventListener('input', renderReceiptPreview);
     document.getElementById('custAddress').addEventListener('input', renderReceiptPreview);
@@ -129,9 +127,13 @@ const setupEventListeners = () => {
     document.getElementById('btnResetForm').addEventListener('click', resetProductForm);
     document.getElementById('btnResetLaporan').addEventListener('click', secureResetLaporan);
     
-    // Format Thermal Switcher
     document.getElementById('btnFormat58').addEventListener('click', () => switchReceiptFormat('58mm'));
     document.getElementById('btnFormat80').addEventListener('click', () => switchReceiptFormat('80mm'));
+    
+    // Integrasi Cetak Struk via System Hardware OS
+    document.getElementById('btnPrintLive').addEventListener('click', () => {
+        window.print();
+    });
 };
 
 const switchView = (viewId) => {
@@ -196,12 +198,9 @@ const addToCart = (product) => {
     renderReceiptPreview();
 };
 
-// --- LOGIKA SISTEM INTEGRASI 2-ARAH & PEMBATAS UNTUNG ---
 window.updateCartItemPrice = (index, value, fieldType) => {
     let item = cart[index];
     let num = parseFloat(value) || 0;
-    
-    // Batas Harga Minimal Aman (HPP + 30%)
     let minPriceAllowed = Math.ceil(item.hpp * 1.30);
 
     if (fieldType === 'price') {
@@ -243,8 +242,6 @@ const updateCartUI = () => {
     } else {
         cart.forEach((item, idx) => {
             subtotal += item.price * item.qty;
-            
-            // Hitung persentase margin laba saat ini dari HPP
             let currentMarginPct = Math.round(((item.price - item.hpp) / item.hpp) * 100);
 
             container.innerHTML += `
@@ -257,7 +254,6 @@ const updateCartUI = () => {
                         <button onclick="removeCartItem(${idx})" class="text-red-400 hover:text-red-600 text-xs"><i class="fas fa-trash"></i></button>
                     </div>
 
-                    <!-- Input 2-Arah Sinkron -->
                     <div class="grid grid-cols-2 gap-2 text-[11px] bg-white dark:bg-gray-800 p-2 rounded-lg border dark:border-gray-600">
                         <div>
                             <span class="block text-[9px] text-gray-400">Harga Jual (Rp)</span>
@@ -326,11 +322,10 @@ const calculateChange = () => {
     }
 };
 
-// --- LOGIKA LIVE THERMAL PREVIEW (REALTIME) ---
+// --- LIVE PREVIEW GENERATOR ---
 const renderReceiptPreview = () => {
     const paper = document.getElementById('thermalPaper');
     
-    // Ambil Data Input Saat Ini
     const cName = document.getElementById('custName').value.trim() || '-';
     const cPhone = document.getElementById('custPhone').value.trim() || '-';
     const cAddr = document.getElementById('custAddress').value.trim() || '-';
@@ -340,11 +335,8 @@ const renderReceiptPreview = () => {
     const total = parseInt(document.getElementById('cartTotal').getAttribute('data-total') || 0);
     const kembali = Math.max(0, bayar - total);
 
-    // Pengaturan Karakter per Baris Kertas Thermal
     const maxChars = (receiptWidthFormat === '58mm') ? 32 : 48;
-    
     const makeLine = (char = '-') => char.repeat(maxChars);
-    
     const fillSpace = (left, right) => {
         let spaceLength = maxChars - (left.length + right.length);
         return left + " ".repeat(spaceLength > 0 ? spaceLength : 1) + right;
@@ -352,17 +344,14 @@ const renderReceiptPreview = () => {
 
     let htmlContent = "";
     
-    // Header Toko
     htmlContent += `<div class="text-center font-bold text-sm uppercase">FAJRI MANDIRI TOYS</div>`;
     htmlContent += `<div class="text-center text-[10px]">Pusat Mainan & Elektronik</div>`;
     htmlContent += `<div class="text-center text-[10px] mb-2">Telp: 0812-XXXX-XXXX</div>`;
     htmlContent += `<div>${makeLine('.')}</div>`;
     
-    // Informasi Nota
     htmlContent += `<div class="text-[10px]">${fillSpace('Waktu:', new Date().toLocaleDateString('id-ID'))}</div>`;
     htmlContent += `<div class="text-[10px]">${fillSpace('Kasir:', currentUser ? currentUser.username.toUpperCase() : 'MOCK')}</div>`;
     
-    // Bagian Pelanggan (Jika Diisi)
     if (cName !== '-' || cPhone !== '-' || cAddr !== '-') {
         htmlContent += `<div>${makeLine('.')}</div>`;
         htmlContent += `<div class="text-[10px] font-bold">PELANGGAN:</div>`;
@@ -373,7 +362,6 @@ const renderReceiptPreview = () => {
     
     htmlContent += `<div>${makeLine('-')}</div>`;
 
-    // Daftar Barang
     if (cart.length === 0) {
         htmlContent += `<div class="text-center text-gray-400 italic text-[11px] my-4">[ Belum Ada Item ]</div>`;
     } else {
@@ -387,7 +375,6 @@ const renderReceiptPreview = () => {
 
     htmlContent += `<div>${makeLine('-')}</div>`;
     
-    // Total Akhir & Pembayaran
     htmlContent += `<div class="text-[11px]">${fillSpace('Subtotal:', formatRupiah(subtotal).replace('Rp ', ''))}</div>`;
     if(diskon > 0) {
         htmlContent += `<div class="text-[11px] text-red-600">${fillSpace('Diskon Nota:', '-' + formatRupiah(diskon).replace('Rp ', ''))}</div>`;
@@ -398,7 +385,6 @@ const renderReceiptPreview = () => {
     
     htmlContent += `<div>${makeLine('.')}</div>`;
     htmlContent += `<div class="text-center text-[10px] mt-2 font-bold">TERIMA KASIH</div>`;
-    htmlContent += `<div class="text-center text-[9px] italic text-gray-500">Barang yang sudah dibeli tidak dapat ditukar/dikembalikan</div>`;
 
     paper.innerHTML = htmlContent;
 };
@@ -412,7 +398,6 @@ const processCheckout = () => {
 
     if (bayar < total) return Swal.fire({ icon: 'error', title: 'Gagal', text: 'Uang pembayaran kurang!' });
 
-    // Potong Stok Utama
     cart.forEach(cartItem => {
         const idx = products.findIndex(p => p.id === cartItem.id);
         if (idx > -1) products[idx].stock -= cartItem.qty;
@@ -420,7 +405,6 @@ const processCheckout = () => {
 
     const hppTotal = cart.reduce((sum, item) => sum + (item.hpp * item.qty), 0);
     
-    // Tarik data pelanggan untuk rekam arsip database
     const trx = {
         id: `TRX-${Date.now()}`,
         timestamp: Date.now(),
@@ -435,14 +419,15 @@ const processCheckout = () => {
         diskon: parseInt(document.getElementById('diskonTrx').value || 0),
         total: total,
         hpp: hppTotal,
-        laba: total - hppTotal
+        laba: total - hppTotal,
+        bayar: bayar
     };
 
     transactions.push(trx);
     localStorage.setItem('pos_products', JSON.stringify(products));
     localStorage.setItem('pos_transactions', JSON.stringify(transactions));
 
-    // Reset Form Kasir Total
+    // Reset Kasir
     cart = [];
     document.getElementById('uangBayar').value = '';
     document.getElementById('diskonTrx').value = '0';
@@ -454,7 +439,16 @@ const processCheckout = () => {
     updateAllViews();
     renderReceiptPreview();
 
-    Swal.fire({ icon: 'success', title: 'Transaksi Berhasil!', text: 'Data dicatat & printer siap mencetak.' });
+    Swal.fire({ 
+        icon: 'success', 
+        title: 'Transaksi Berhasil!', 
+        text: 'Data disimpan. Ingin langsung mencetak struk?',
+        showCancelButton: true,
+        confirmButtonText: 'Ya, Cetak',
+        cancelButtonText: 'Nanti Saja'
+    }).then((res) => {
+        if(res.isConfirmed) window.print();
+    });
 };
 
 // --- STOK & KELOLA BARANG ---
@@ -549,7 +543,7 @@ const resetProductForm = () => {
     document.getElementById('editId').value = '';
 };
 
-// --- DASHBOARD REPORT ---
+// --- RIWAYAT, RE-PRINT & EDIT SYSTEM (VERIFIKASI AMAN) ---
 const calculateDashboard = () => {
     let dOmset = 0, dHpp = 0, dLaba = 0;
     let wOmset = 0, wHpp = 0, wLaba = 0;
@@ -590,15 +584,137 @@ const calculateDashboard = () => {
 const renderRiwayat = () => {
     const tbody = document.getElementById('riwayatTableBody');
     tbody.innerHTML = '';
-    [...transactions].reverse().forEach(t => {
+    
+    [...transactions].reverse().forEach((t, reversedIdx) => {
+        // Ambil index asli di array state utama
+        const originalIdx = transactions.length - 1 - reversedIdx; 
+        
         tbody.innerHTML += `
-            <tr class="text-xs">
+            <tr class="text-xs hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td class="p-3 border-b dark:border-gray-600">${t.date}</td>
                 <td class="p-3 border-b dark:border-gray-600 font-mono">${t.id}</td>
-                <td class="p-3 border-b dark:border-gray-600">${t.items.reduce((s, i) => s + i.qty, 0)}</td>
+                <td class="p-3 border-b dark:border-gray-600 font-semibold">${t.customer ? t.customer.name : 'Umum'}</td>
+                <td class="p-3 border-b dark:border-gray-600">${t.items.reduce((s, i) => s + i.qty, 0)} Item</td>
                 <td class="p-3 border-b dark:border-gray-600 font-bold text-green-500">${formatRupiah(t.total)}</td>
+                <td class="p-3 border-b dark:border-gray-600 text-center space-x-1 whitespace-nowrap">
+                    <button onclick="printOldTransaction(${originalIdx})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-[11px] font-medium transition">
+                        <i class="fas fa-print"></i> Cetak
+                    </button>
+                    <button onclick="secureEditTransaction(${originalIdx})" class="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded text-[11px] font-medium transition">
+                        <i class="fas fa-edit"></i> Koreksi / Edit
+                    </button>
+                </td>
             </tr>
         `;
+    });
+};
+
+// Fungsi Cetak Ulang dari Riwayat
+window.printOldTransaction = (idx) => {
+    const t = transactions[idx];
+    
+    // Simpan data keranjang aktif sementara
+    const tempCart = [...cart];
+    const tempName = document.getElementById('custName').value;
+    const tempPhone = document.getElementById('custPhone').value;
+    const tempAddr = document.getElementById('custAddress').value;
+    const tempDiskon = document.getElementById('diskonTrx').value;
+    const tempBayar = document.getElementById('uangBayar').value;
+
+    // Load data transaksi lama ke preview generator
+    cart = t.items;
+    document.getElementById('custName').value = t.customer.name;
+    document.getElementById('custPhone').value = t.customer.phone;
+    document.getElementById('custAddress').value = t.customer.address;
+    document.getElementById('diskonTrx').value = t.diskon;
+    document.getElementById('uangBayar').value = t.bayar || t.total;
+
+    updateCartUI();
+    renderReceiptPreview();
+
+    // Trigger Print Jendela OS Browser
+    setTimeout(() => {
+        window.print();
+        
+        // Kembalikan kondisi kasir aktif semula
+        cart = tempCart;
+        document.getElementById('custName').value = tempName;
+        document.getElementById('custPhone').value = tempPhone;
+        document.getElementById('custAddress').value = tempAddr;
+        document.getElementById('diskonTrx').value = tempDiskon;
+        document.getElementById('uangBayar').value = tempBayar;
+        updateCartUI();
+        renderReceiptPreview();
+        Toast.fire({ icon: 'success', title: 'Perintah print dikirim!' });
+    }, 150);
+};
+
+// Fungsi Koreksi Ganda (Amankan Stok & Balikkan ke Kasir)
+window.secureEditTransaction = (idx) => {
+    if (cart.length > 0) {
+        return Swal.fire({
+            icon: 'error',
+            title: 'Kasir Masih Terisi',
+            text: 'Kosongkan atau selesaikan belanjaan di kasir terlebih dahulu sebelum mengedit transaksi riwayat!'
+        });
+    }
+
+    const t = transactions[idx];
+
+    Swal.fire({
+        title: 'Verifikasi Koreksi',
+        text: `Apakah Anda yakin ingin mengedit ${t.id}? Sistem akan membatalkan status transaksi ini dan mengembalikan item ke kasir untuk diperbaiki.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#f97316',
+        confirmButtonText: 'Ya, Kembalikan ke Kasir',
+        cancelButtonText: 'Batal'
+    }).then((res) => {
+        if (res.isConfirmed) {
+            // RESTORE STOK UTAMA (Balikkan efek penjualan lama)
+            t.items.forEach(oldItem => {
+                const pIdx = products.findIndex(p => p.id === oldItem.id);
+                if (pIdx > -1) {
+                    products[pIdx].stock += oldItem.qty;
+                }
+            });
+
+            // OPER DATA KE REGISTER AKTIF KASIR
+            cart = [...t.items];
+            document.getElementById('custName').value = t.customer.name === 'Umum' ? '' : t.customer.name;
+            document.getElementById('custPhone').value = t.customer.phone === '-' ? '' : t.customer.phone;
+            document.getElementById('custAddress').value = t.customer.address === '-' ? '' : t.customer.address;
+            document.getElementById('diskonTrx').value = t.diskon;
+            document.getElementById('uangBayar').value = t.bayar || t.total;
+
+            // HAPUS TRANSAKSI LAMA DARI DATABASE AGAR TIDAK DOUBLE PENJUALAN
+            transactions.splice(idx, 1);
+
+            // SIMPAN PERUBAHAN STATE
+            localStorage.setItem('pos_products', JSON.stringify(products));
+            localStorage.setItem('pos_transactions', JSON.stringify(transactions));
+
+            // UPDATE TAMPILAN
+            updateCartUI();
+            updateAllViews();
+            renderReceiptPreview();
+
+            // Alihkan otomatis halaman kasir agar user langsung fokus mengedit
+            switchView('view-kasir');
+            document.querySelectorAll('.nav-btn').forEach(b => {
+                b.classList.remove('bg-blue-50', 'dark:bg-gray-700', 'text-blue-600', 'dark:text-blue-400');
+                if(b.getAttribute('data-target') === 'view-kasir') {
+                    b.classList.add('bg-blue-50', 'dark:bg-gray-700', 'text-blue-600', 'dark:text-blue-400');
+                }
+            });
+
+            Swal.fire({
+                icon: 'info',
+                title: 'Transaksi Siap Diedit',
+                text: 'Item berhasil dikembalikan ke layar kasir. Silakan sesuaikan lalu klik "Proses Transaksi" kembali.',
+                timer: 4000
+            });
+        }
     });
 };
 
