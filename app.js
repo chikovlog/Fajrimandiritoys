@@ -136,6 +136,9 @@ const setupEventListeners = () => {
     
     document.getElementById('btnExportExcel').addEventListener('click', exportToExcel);
     document.getElementById('btnExportPdf').addEventListener('click', exportToPDF);
+    
+    // Sambungkan Tombol Reset Laporan Keamanan Ganda
+    document.getElementById('btnResetLaporan').addEventListener('click', secureResetLaporan);
 };
 
 const switchView = (viewId) => {
@@ -421,28 +424,23 @@ const calculateDashboard = () => {
     let monthOmset = 0, monthHpp = 0, monthLaba = 0;
 
     const now = new Date();
-    // Ambil batas penanda waktu (Midnight)
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const weekStart = todayStart - (7 * 24 * 60 * 60 * 1000); // Batas 7 hari ke belakang
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); // Batas tanggal 1 bulan berjalan
+    const weekStart = todayStart - (7 * 24 * 60 * 60 * 1000); 
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime(); 
 
     transactions.forEach(t => {
-        // Fallback mengambil timestamp jika transaksi lama belum memilikinya
         const ts = t.timestamp || parseInt(t.id.split('-')[1]) || todayStart;
 
-        // 1. Klasifikasi Harian (Hari ini)
         if (ts >= todayStart) {
             dayOmset += t.total;
             dayHpp += t.hpp;
             dayLaba += t.laba;
         }
-        // 2. Klasifikasi Mingguan (7 hari ke belakang)
         if (ts >= weekStart) {
             weekOmset += t.total;
             weekHpp += t.hpp;
             weekLaba += t.laba;
         }
-        // 3. Klasifikasi Bulanan (Bulan berjalan)
         if (ts >= monthStart) {
             monthOmset += t.total;
             monthHpp += t.hpp;
@@ -452,19 +450,16 @@ const calculateDashboard = () => {
 
     const calcMargin = (laba, omset) => omset > 0 ? Math.round((laba / omset) * 100) : 0;
 
-    // Render Data Tampilan Harian
     document.getElementById('dayOmset').innerText = formatRupiah(dayOmset);
     document.getElementById('dayHpp').innerText = formatRupiah(dayHpp);
     document.getElementById('dayLaba').innerText = formatRupiah(dayLaba);
     document.getElementById('dayMargin').innerText = `${calcMargin(dayLaba, dayOmset)}%`;
 
-    // Render Data Tampilan Mingguan
     document.getElementById('weekOmset').innerText = formatRupiah(weekOmset);
     document.getElementById('weekHpp').innerText = formatRupiah(weekHpp);
     document.getElementById('weekLaba').innerText = formatRupiah(weekLaba);
     document.getElementById('weekMargin').innerText = `${calcMargin(weekLaba, weekOmset)}%`;
 
-    // Render Data Tampilan Bulanan
     document.getElementById('monthOmset').innerText = formatRupiah(monthOmset);
     document.getElementById('monthHpp').innerText = formatRupiah(monthHpp);
     document.getElementById('monthLaba').innerText = formatRupiah(monthLaba);
@@ -485,6 +480,68 @@ const renderRiwayat = () => {
                 <td class="p-3 border-b dark:border-gray-600 font-bold text-green-600">${formatRupiah(t.total)}</td>
             </tr>
         `;
+    });
+};
+
+// --- FUNGSI KEAMANAN GANDA: RESET DATA LAPORAN ---
+const secureResetLaporan = () => {
+    // PROTEKSI 1: Validasi Otoritas Sistem (Hanya Otoritas Akun Owner)
+    if (!currentUser || currentUser.role !== 'owner') {
+        Swal.fire({ icon: 'error', title: 'Akses Ditolak', text: 'Hanya Owner yang memiliki hak untuk mereset laporan!' });
+        return;
+    }
+
+    // PROTEKSI 2: Validasi Ulang Password Owner
+    Swal.fire({
+        title: 'Verifikasi Otoritas (Tahap 1)',
+        text: 'Masukkan kembali password Owner untuk konfirmasi identitas:',
+        input: 'password',
+        inputAttributes: { autocapitalize: 'off', autocorrect: 'off' },
+        placeholder: 'Password Owner',
+        showCancelButton: true,
+        confirmButtonText: 'Lanjutkan',
+        confirmButtonColor: '#d33',
+        cancelButtonText: 'Batal',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            if (result.value === 'owner123') {
+                
+                // PROTEKSI 3: Anti Gagal Klik / Sadar Ketik Manual
+                Swal.fire({
+                    title: 'Konfirmasi Mutlak (Tahap 2)',
+                    text: 'Ketik kata kunci "RESET LAPORAN" (wajib huruf kapital semua) untuk mengosongkan seluruh dashboard & riwayat penjualan:',
+                    input: 'text',
+                    placeholder: 'RESET LAPORAN',
+                    showCancelButton: true,
+                    confirmButtonText: 'Hapus Permanen',
+                    confirmButtonColor: '#d33',
+                    cancelButtonText: 'Batalkan Aksi',
+                }).then((finalResult) => {
+                    if (finalResult.isConfirmed) {
+                        if (finalResult.value === 'RESET LAPORAN') {
+                            
+                            // Eksekusi pembersihan total riwayat penjualan
+                            transactions = [];
+                            localStorage.setItem('pos_transactions', JSON.stringify(transactions));
+                            
+                            // Hitung ulang dashboard supaya langsung kembali ke Rp 0 secara real-time
+                            calculateDashboard();
+                            
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Laporan Direset!',
+                                text: 'Seluruh data omset, HPP, keuntungan, dan riwayat transaksi berhasil dibersihkan.',
+                                confirmButtonColor: '#3085d6'
+                            });
+                        } else {
+                            Toast.fire({ icon: 'error', title: 'Kata kunci salah! Reset dibatalkan.' });
+                        }
+                    }
+                });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Akses Diblokir', text: 'Password salah! Tindakan mencurigakan dihentikan.' });
+            }
+        }
     });
 };
 
