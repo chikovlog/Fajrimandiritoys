@@ -13,7 +13,7 @@ let products = JSON.parse(localStorage.getItem('pos_products')) || [
 let cart = [];
 let transactions = JSON.parse(localStorage.getItem('pos_transactions')) || [];
 
-// --- UTILITAS ---
+// --- UTILITAS UI ---
 const Toast = Swal.mixin({
     toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, timerProgressBar: true
 });
@@ -130,10 +130,8 @@ const setupEventListeners = () => {
     document.getElementById('btnFormat58').addEventListener('click', () => switchReceiptFormat('58mm'));
     document.getElementById('btnFormat80').addEventListener('click', () => switchReceiptFormat('80mm'));
     
-    // Trigger Print Jendela OS via Container Isolasi Terbuka
-    document.getElementById('btnPrintLive').addEventListener('click', () => {
-        executeSystemPrint();
-    });
+    // Pemicu Cetak Mutlak Bypass
+    document.getElementById('btnPrintLive').addEventListener('click', executeBypassPrint);
 };
 
 const switchView = (viewId) => {
@@ -164,10 +162,10 @@ const updateAllViews = () => {
     renderProducts();
     renderStok();
     renderKelolaBarang();
-    renderKasirRealtimeHistory(); // Render otomatis riwayat mini di panel kasir
+    renderKasirHistory(); // Memuat daftar riwayat kasir harian
 };
 
-// --- KASIR UTAMA ---
+// --- KASIR ENGINE ---
 const renderProducts = (searchQuery = '') => {
     const list = document.getElementById('productList');
     list.innerHTML = '';
@@ -218,12 +216,7 @@ window.updateCartItemPrice = (index, value, fieldType) => {
         }
     } else if (fieldType === 'margin') {
         if (num < 30) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Margin Dikunci',
-                text: 'Keuntungan minimal diatur sistem sebesar 30% dari HPP.',
-                timer: 2000
-            });
+            Swal.fire({ icon: 'warning', title: 'Margin Dikunci', text: 'Keuntungan minimal diatur sistem sebesar 30% dari HPP.', timer: 2000 });
             num = 30;
         }
         item.price = Math.ceil(item.hpp * (1 + (num / 100)));
@@ -323,21 +316,31 @@ const calculateChange = () => {
     }
 };
 
-// --- STRUK GENERATOR UTAMA & PREVIEW ---
-const buildReceiptHTML = (customCart = null, customMeta = null) => {
-    const activeCart = customCart || cart;
+// --- SOLUSI UTAMA: FUNGSI BYPASS PRINTER ANTI NOTA KOSONG ---
+const executeBypassPrint = () => {
+    let printSection = document.getElementById('printSection');
+    if (!printSection) {
+        printSection = document.createElement('div');
+        printSection.id = 'printSection';
+        document.body.appendChild(printSection);
+    }
+    // Salin struktur html struk live preview ke kontainer cetak terisolasi
+    printSection.innerHTML = document.getElementById('thermalPaper').innerHTML;
+    window.print();
+};
+
+// --- LIVE PREVIEW GENERATOR ---
+const renderReceiptPreview = () => {
+    const paper = document.getElementById('thermalPaper');
     
-    const cName = customMeta ? customMeta.customer.name : (document.getElementById('custName').value.trim() || '-');
-    const cPhone = customMeta ? customMeta.customer.phone : (document.getElementById('custPhone').value.trim() || '-');
-    const cAddr = customMeta ? customMeta.customer.address : (document.getElementById('custAddress').value.trim() || '-');
-    
-    const diskon = customMeta ? customMeta.diskon : parseInt(document.getElementById('diskonTrx').value || 0);
-    const bayar = customMeta ? customMeta.bayar : parseInt(document.getElementById('uangBayar').value || 0);
-    const subtotal = customMeta ? customMeta.subtotal : parseInt(document.getElementById('cartTotal').getAttribute('data-subtotal') || 0);
-    const total = customMeta ? customMeta.total : parseInt(document.getElementById('cartTotal').getAttribute('data-total') || 0);
+    const cName = document.getElementById('custName').value.trim() || '-';
+    const cPhone = document.getElementById('custPhone').value.trim() || '-';
+    const cAddr = document.getElementById('custAddress').value.trim() || '-';
+    const diskon = parseInt(document.getElementById('diskonTrx').value || 0);
+    const bayar = parseInt(document.getElementById('uangBayar').value || 0);
+    const subtotal = parseInt(document.getElementById('cartTotal').getAttribute('data-subtotal') || 0);
+    const total = parseInt(document.getElementById('cartTotal').getAttribute('data-total') || 0);
     const kembali = Math.max(0, bayar - total);
-    const dateStr = customMeta ? customMeta.date : new Date().toLocaleString('id-ID');
-    const cashierName = customMeta ? customMeta.cashier : (currentUser ? currentUser.username.toUpperCase() : 'MOCK');
 
     const maxChars = (receiptWidthFormat === '58mm') ? 32 : 48;
     const makeLine = (char = '-') => char.repeat(maxChars);
@@ -347,110 +350,53 @@ const buildReceiptHTML = (customCart = null, customMeta = null) => {
     };
 
     let htmlContent = "";
-    htmlContent += `<div style="text-align: center; font-weight: bold; text-transform: uppercase;">FAJRI MANDIRI TOYS</div>`;
-    htmlContent += `<div style="text-align: center; font-size: 10px;">Pusat Mainan & Elektronik</div>`;
-    htmlContent += `<div style="text-align: center; font-size: 10px; margin-bottom: 8px;">Telp: 0812-XXXX-XXXX</div>`;
+    
+    htmlContent += `<div class="text-center font-bold text-sm uppercase">FAJRI MANDIRI TOYS</div>`;
+    htmlContent += `<div class="text-center text-[10px]">Pusat Mainan & Elektronik</div>`;
+    htmlContent += `<div class="text-center text-[10px] mb-2">Telp: 0812-XXXX-XXXX</div>`;
     htmlContent += `<div>${makeLine('.')}</div>`;
     
-    htmlContent += `<div style="font-size: 10px;">${fillSpace('Waktu:', dateStr)}</div>`;
-    htmlContent += `<div style="font-size: 10px;">${fillSpace('Kasir:', cashierName)}</div>`;
+    htmlContent += `<div class="text-[10px]">${fillSpace('Waktu:', new Date().toLocaleDateString('id-ID'))}</div>`;
+    htmlContent += `<div class="text-[10px]">${fillSpace('Kasir:', currentUser ? currentUser.username.toUpperCase() : 'MOCK')}</div>`;
     
     if (cName !== '-' || cPhone !== '-' || cAddr !== '-') {
         htmlContent += `<div>${makeLine('.')}</div>`;
-        htmlContent += `<div style="font-size: 10px; font-weight: bold;">PELANGGAN:</div>`;
-        if(cName !== '-') htmlContent += `<div style="font-size: 10px;">Nama: ${cName}</div>`;
-        if(cPhone !== '-') htmlContent += `<div style="font-size: 10px;">HP: ${cPhone}</div>`;
-        if(cAddr !== '-') htmlContent += `<div style="font-size: 10px;">Alamat: ${cAddr}</div>`;
+        htmlContent += `<div class="text-[10px] font-bold">PELANGGAN:</div>`;
+        if(cName !== '-') htmlContent += `<div class="text-[10px]">Nama: ${cName}</div>`;
+        if(cPhone !== '-') htmlContent += `<div class="text-[10px]">HP: ${cPhone}</div>`;
+        if(cAddr !== '-') htmlContent += `<div class="text-[10px] truncate">Alamat: ${cAddr}</div>`;
     }
     
     htmlContent += `<div>${makeLine('-')}</div>`;
 
-    if (activeCart.length === 0) {
-        htmlContent += `<div style="text-align: center; color: #9ca3af; font-style: italic; margin: 16px 0;">[ Belum Ada Item ]</div>`;
+    if (cart.length === 0) {
+        htmlContent += `<div class="text-center text-gray-400 italic text-[11px] my-4">[ Belum Ada Item ]</div>`;
     } else {
-        activeCart.forEach(item => {
-            htmlContent += `<div style="font-weight: bold; font-size: 11px;">${item.name}</div>`;
+        cart.forEach(item => {
+            htmlContent += `<div class="font-bold text-[11px]">${item.name}</div>`;
             let leftDetails = `  ${item.qty} x ${formatRupiah(item.price).replace('Rp ', '')}`;
             let rightTotal = formatRupiah(item.price * item.qty).replace('Rp ', '');
-            htmlContent += `<div style="font-size: 11px;">${fillSpace(leftDetails, rightTotal)}</div>`;
+            htmlContent += `<div class="text-[11px]">${fillSpace(leftDetails, rightTotal)}</div>`;
         });
     }
 
     htmlContent += `<div>${makeLine('-')}</div>`;
-    htmlContent += `<div style="font-size: 11px;">${fillSpace('Subtotal:', formatRupiah(subtotal).replace('Rp ', ''))}</div>`;
+    
+    htmlContent += `<div class="text-[11px]">${fillSpace('Subtotal:', formatRupiah(subtotal).replace('Rp ', ''))}</div>`;
     if(diskon > 0) {
-        htmlContent += `<div style="font-size: 11px; color: #dc2626;">${fillSpace('Diskon Nota:', '-' + formatRupiah(diskon).replace('Rp ', ''))}</div>`;
+        htmlContent += `<div class="text-[11px] text-red-600">${fillSpace('Diskon Nota:', '-' + formatRupiah(diskon).replace('Rp ', ''))}</div>`;
     }
-    htmlContent += `<div style="font-size: 11px; font-weight: bold;">${fillSpace('TOTAL AKHIR:', formatRupiah(total).replace('Rp ', ''))}</div>`;
-    htmlContent += `<div style="font-size: 11px;">${fillSpace('Tunai Bayar:', formatRupiah(bayar).replace('Rp ', ''))}</div>`;
-    htmlContent += `<div style="font-size: 11px; font-weight: bold;">${fillSpace('Kembalian:', formatRupiah(kembali).replace('Rp ', ''))}</div>`;
+    htmlContent += `<div class="text-[11px] font-bold">${fillSpace('TOTAL AKHIR:', formatRupiah(total).replace('Rp ', ''))}</div>`;
+    htmlContent += `<div class="text-[11px]">${fillSpace('Tunai Bayar:', formatRupiah(bayar).replace('Rp ', ''))}</div>`;
+    htmlContent += `<div class="text-[11px] font-bold">${fillSpace('Kembalian:', formatRupiah(kembali).replace('Rp ', ''))}</div>`;
     
     htmlContent += `<div>${makeLine('.')}</div>`;
-    htmlContent += `<div style="text-align: center; font-size: 10px; margin-top: 8px; font-weight: bold;">TERIMA KASIH</div>`;
+    htmlContent += `<div class="text-center text-[10px] mt-2 font-bold">TERIMA KASIH</div>`;
 
-    return htmlContent;
+    paper.innerHTML = htmlContent;
 };
 
-const renderReceiptPreview = () => {
-    document.getElementById('thermalPaper').innerHTML = buildReceiptHTML();
-};
-
-// Fungsi Eksekusi Cetak ke Driver Printer Hardware (Anti Struk Kosong)
-const executeSystemPrint = (customCart = null, customMeta = null) => {
-    const printContainer = document.getElementById('printContainer');
-    
-    // Inject struktur nota bersih ke kontainer cetak global terpisah
-    printContainer.innerHTML = buildReceiptHTML(customCart, customMeta);
-    
-    // Trigger cetak bawaan OS Browser
-    window.print();
-    
-    // Bersihkan kembali kontainer cetak setelah jendela print ditutup
-    printContainer.innerHTML = "";
-};
-
-// --- SUB-KOMPONEN BARU: HISTORY PENJUALAN DI PANEL KASIR ---
-const renderKasirRealtimeHistory = () => {
-    const historyList = document.getElementById('kasirRealtimeHistoryList');
-    const historyCount = document.getElementById('kasirHistoryCount');
-    historyList.innerHTML = '';
-
-    // Ambil transaksi khusus hari ini saja
-    const todayStr = new Date().toLocaleDateString('id-ID');
-    const todayTransactions = transactions.filter(t => t.date.includes(todayStr));
-    
-    historyCount.innerText = todayTransactions.length;
-
-    if(todayTransactions.length === 0) {
-        historyList.innerHTML = `<div class="text-center text-gray-400 py-4 italic">Belum ada penjualan hari ini</div>`;
-        return;
-    }
-
-    // Urutkan dari yang paling baru di atas
-    [...todayTransactions].reverse().forEach(t => {
-        const timeOnly = t.date.split(' ')[1] || t.date;
-        const itemNames = t.items.map(i => `${i.name} (${i.qty})`).join(', ');
-
-        const div = document.createElement('div');
-        div.className = "p-2 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg flex justify-between items-center shadow-xs gap-2";
-        div.innerHTML = `
-            <div class="overflow-hidden flex-grow">
-                <div class="flex gap-1.5 items-center">
-                    <span class="font-bold text-blue-600 dark:text-blue-400">${timeOnly}</span>
-                    <span class="text-gray-400 font-mono">| ${t.id}</span>
-                    <span class="text-purple-500 font-semibold truncate max-w-[70px]">(${t.cashier || 'Kasir'})</span>
-                </div>
-                <div class="text-[10px] text-gray-500 dark:text-gray-300 truncate mt-0.5">${itemNames}</div>
-            </div>
-            <div class="text-right font-bold text-green-600 dark:text-green-400 whitespace-nowrap">
-                ${formatRupiah(t.total)}
-            </div>
-        `;
-        historyList.appendChild(div);
-    });
-};
-
-// --- PROSES CHECKOUT TRANSAKSI ---
+// --- CHECKOUT ---
 const processCheckout = () => {
     if (cart.length === 0) return Toast.fire({ icon: 'error', title: 'Keranjang kosong!' });
     
@@ -470,7 +416,6 @@ const processCheckout = () => {
         id: `TRX-${Date.now()}`,
         timestamp: Date.now(),
         date: new Date().toLocaleString('id-ID'),
-        cashier: currentUser ? currentUser.username.toUpperCase() : 'KASIR',
         customer: {
             name: document.getElementById('custName').value.trim() || 'Umum',
             phone: document.getElementById('custPhone').value.trim() || '-',
@@ -489,19 +434,6 @@ const processCheckout = () => {
     localStorage.setItem('pos_products', JSON.stringify(products));
     localStorage.setItem('pos_transactions', JSON.stringify(transactions));
 
-    // Ekstrak data untuk keperluan cetak instan sebelum form di-clear
-    const frozenCart = [...cart];
-    const frozenMeta = {
-        customer: { ...trx.customer },
-        diskon: trx.diskon,
-        bayar: trx.bayar,
-        subtotal: trx.subtotal,
-        total: trx.total,
-        date: trx.date,
-        cashier: trx.cashier
-    };
-
-    // Reset Form Kasir Aktif
     cart = [];
     document.getElementById('uangBayar').value = '';
     document.getElementById('diskonTrx').value = '0';
@@ -514,18 +446,55 @@ const processCheckout = () => {
     renderReceiptPreview();
 
     Swal.fire({ 
-        icon: 'success', 
         title: 'Transaksi Berhasil!', 
-        text: 'Data disimpan ke database lokal.',
+        text: 'Data disimpan. Ingin cetak struk pembeli?',
+        icon: 'success',
         showCancelButton: true,
-        confirmButtonText: '<i class="fas fa-print"></i> Cetak Struk',
-        cancelButtonText: 'Selesai / Nota Baru',
-        confirmButtonColor: '#2563eb'
+        confirmButtonText: 'Ya, Cetak',
+        cancelButtonText: 'Nanti Saja'
     }).then((res) => {
-        if(res.isConfirmed) {
-            executeSystemPrint(frozenCart, frozenMeta);
-        }
+        if(res.isConfirmed) executeBypassPrint();
     });
+};
+
+// --- NEW: LOGIKA INPUT PANEL RIWAYAT TRANSAKSI DI KASIR ---
+const renderKasirHistory = () => {
+    const container = document.getElementById('kasirHistoryList');
+    if(!container) return;
+    container.innerHTML = '';
+    
+    const todayStr = new Date().toLocaleDateString('id-ID');
+    // Ambil transaksi hari ini saja untuk performa ringan kasir
+    const todayTrx = transactions.filter(t => t.date.includes(todayStr)).reverse();
+    
+    if(todayTrx.length === 0) {
+        container.innerHTML = `<div class="text-gray-400 italic text-center py-3 text-xs">Belum ada transaksi hari ini</div>`;
+        return;
+    }
+    
+    todayTrx.forEach(t => {
+        const timeStr = t.date.split(/[\s,]+/)[1] || t.date; // Ekstrak jam saja
+        container.innerHTML += `
+            <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-2 rounded-lg border dark:border-gray-700 shadow-sm text-xs">
+                <div class="truncate max-w-[70%]">
+                    <span class="font-mono font-bold text-blue-500">${t.id}</span>
+                    <span class="text-gray-400 font-normal px-1">[${timeStr}]</span>
+                    <span class="text-gray-600 dark:text-gray-300 font-semibold">• ${t.customer.name}</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="font-bold text-green-600">${formatRupiah(t.total)}</span>
+                    <button onclick="printOldTransactionFromKasir('${t.id}')" class="text-gray-400 hover:text-blue-500 transition" title="Cetak Nota">
+                        <i class="fas fa-print"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+    });
+};
+
+window.printOldTransactionFromKasir = (id) => {
+    const idx = transactions.findIndex(t => t.id === id);
+    if (idx > -1) window.printOldTransaction(idx);
 };
 
 // --- STOK & KELOLA BARANG ---
@@ -620,7 +589,7 @@ const resetProductForm = () => {
     document.getElementById('editId').value = '';
 };
 
-// --- RIWAYAT, RE-PRINT, EDIT, & HAPUS BERAMAN-GANDA ---
+// --- DASHBOARD REPORT & MANAGEMENT TRANSAKSI ---
 const calculateDashboard = () => {
     let dOmset = 0, dHpp = 0, dLaba = 0;
     let wOmset = 0, wHpp = 0, wLaba = 0;
@@ -667,63 +636,66 @@ const renderRiwayat = () => {
         
         tbody.innerHTML += `
             <tr class="text-xs hover:bg-gray-50 dark:hover:bg-gray-700">
-                <td class="p-3 border-b dark:border-gray-600">${t.date} <span class="text-purple-500 font-semibold">(${t.cashier || 'KASIR'})</span></td>
-                <td class="p-3 border-b dark:border-gray-600 font-mono">${t.id}</td>
+                <td class="p-3 border-b dark:border-gray-600 whitespace-nowrap">${t.date}</td>
+                <td class="p-3 border-b dark:border-gray-600 font-mono text-[11px]">${t.id}</td>
                 <td class="p-3 border-b dark:border-gray-600 font-semibold">${t.customer ? t.customer.name : 'Umum'}</td>
                 <td class="p-3 border-b dark:border-gray-600">${t.items.reduce((s, i) => s + i.qty, 0)} Item</td>
                 <td class="p-3 border-b dark:border-gray-600 font-bold text-green-500">${formatRupiah(t.total)}</td>
                 <td class="p-3 border-b dark:border-gray-600 text-center space-x-1 whitespace-nowrap">
-                    <button onclick="printOldTransaction(${originalIdx})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-[11px] font-medium transition">
-                        <i class="fas fa-print"></i> Cetak
-                    </button>
-                    <button onclick="secureEditTransaction(${originalIdx})" class="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded text-[11px] font-medium transition">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button onclick="secureDeleteTransaction(${originalIdx})" class="bg-red-600 hover:bg-red-700 text-white px-2 py-1 rounded text-[11px] font-medium transition" title="Hapus Transaksi Permanen">
-                        <i class="fas fa-trash-alt"></i> Hapus
-                    </button>
+                    <button onclick="printOldTransaction(${originalIdx})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-[11px] font-medium transition"><i class="fas fa-print"></i> Cetak</button>
+                    <button onclick="secureEditTransaction(${originalIdx})" class="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded text-[11px] font-medium transition"><i class="fas fa-edit"></i> Edit</button>
+                    <button onclick="secureDeleteTransaction(${originalIdx})" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[11px] font-medium transition"><i class="fas fa-trash-alt"></i> Hapus</button>
                 </td>
             </tr>
         `;
     });
 };
 
-// Cetak Ulang Nota Lama
 window.printOldTransaction = (idx) => {
     const t = transactions[idx];
-    const metaStruk = {
-        customer: { ...t.customer },
-        diskon: t.diskon,
-        bayar: t.bayar || t.total,
-        subtotal: t.subtotal,
-        total: t.total,
-        date: t.date,
-        cashier: t.cashier || 'KASIR'
-    };
-    executeSystemPrint(t.items, metaStruk);
-    Toast.fire({ icon: 'success', title: 'Struks siap dicetak!' });
+    
+    const tempCart = [...cart];
+    const tempName = document.getElementById('custName').value;
+    const tempPhone = document.getElementById('custPhone').value;
+    const tempAddr = document.getElementById('custAddress').value;
+    const tempDiskon = document.getElementById('diskonTrx').value;
+    const tempBayar = document.getElementById('uangBayar').value;
+
+    cart = t.items;
+    document.getElementById('custName').value = t.customer.name;
+    document.getElementById('custPhone').value = t.customer.phone;
+    document.getElementById('custAddress').value = t.customer.address;
+    document.getElementById('diskonTrx').value = t.diskon;
+    document.getElementById('uangBayar').value = t.bayar || t.total;
+
+    updateCartUI();
+    renderReceiptPreview();
+
+    setTimeout(() => {
+        executeBypassPrint();
+        
+        cart = tempCart;
+        document.getElementById('custName').value = tempName;
+        document.getElementById('custPhone').value = tempPhone;
+        document.getElementById('custAddress').value = tempAddr;
+        document.getElementById('diskonTrx').value = tempDiskon;
+        document.getElementById('uangBayar').value = tempBayar;
+        updateCartUI();
+        renderReceiptPreview();
+    }, 150);
 };
 
-// Koreksi / Edit Transaksi
 window.secureEditTransaction = (idx) => {
-    if (cart.length > 0) {
-        return Swal.fire({
-            icon: 'error',
-            title: 'Kasir Masih Terisi',
-            text: 'Kosongkan atau selesaikan belanjaan di kasir terlebih dahulu sebelum mengedit transaksi riwayat!'
-        });
-    }
-
+    if (cart.length > 0) return Swal.fire({ icon: 'error', title: 'Kasir Isi', text: 'Selesaikan transaksi kasir aktif saat ini terlebih dahulu!' });
     const t = transactions[idx];
 
     Swal.fire({
-        title: 'Verifikasi Koreksi',
-        text: `Apakah Anda yakin ingin mengedit ${t.id}? Sistem akan membatalkan status transaksi ini dan mengembalikan item ke kasir untuk diperbaiki.`,
+        title: 'Koreksi Transaksi',
+        text: `Kembalikan barang ${t.id} ke kasir untuk diedit? Riwayat ini akan dihapus sementara untuk menghindari data ganda.`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#f97316',
-        confirmButtonText: 'Ya, Kembalikan ke Kasir',
-        cancelButtonText: 'Batal'
+        confirmButtonText: 'Ya, Edit'
     }).then((res) => {
         if (res.isConfirmed) {
             t.items.forEach(oldItem => {
@@ -739,87 +711,69 @@ window.secureEditTransaction = (idx) => {
             document.getElementById('uangBayar').value = t.bayar || t.total;
 
             transactions.splice(idx, 1);
-
             localStorage.setItem('pos_products', JSON.stringify(products));
             localStorage.setItem('pos_transactions', JSON.stringify(transactions));
 
             updateCartUI();
             updateAllViews();
             renderReceiptPreview();
-
             switchView('view-kasir');
-            document.querySelectorAll('.nav-btn').forEach(b => {
-                b.classList.remove('bg-blue-50', 'dark:bg-gray-700', 'text-blue-600', 'dark:text-blue-400');
-                if(b.getAttribute('data-target') === 'view-kasir') {
-                    b.classList.add('bg-blue-50', 'dark:bg-gray-700', 'text-blue-600', 'dark:text-blue-400');
-                }
-            });
-
-            Swal.fire({
-                icon: 'info',
-                title: 'Transaksi Siap Diedit',
-                text: 'Item berhasil dikembalikan ke layar kasir. Silakan sesuaikan lalu klik "Proses Transaksi" kembali.',
-                timer: 4000
-            });
         }
     });
 };
 
-// --- TAMBAHAN BARU: SISTEM KEAMANAN GANDA UNTUK HAPUS SATU TRANSAKSI ---
+// --- NEW: FUNGSI KEAMANAN GANDA HAPUS TRANSAKSI TUNGGAL ---
 window.secureDeleteTransaction = (idx) => {
+    if (!currentUser || currentUser.role !== 'owner') {
+        Swal.fire({ icon: 'error', title: 'Ditolak', text: 'Hanya Owner yang memiliki izin menghapus nota riwayat!' });
+        return;
+    }
+    
     const t = transactions[idx];
 
-    // Tahap Keamanan 1: Konfirmasi Verifikasi Hak Akses Owner
+    // Tahap Keamanan 1: Verifikasi Re-input Password Akun Owner
     Swal.fire({
-        title: 'Keamanan Tingkat 1',
-        text: `Anda akan menghapus transaksi ${t.id} secara permanen. Masukkan Password Owner untuk melanjutkan:`,
+        title: 'Keamanan Tahap 1',
+        text: `Masukkan password Owner untuk memproses penghapusan ${t.id}:`,
         input: 'password',
-        inputPlaceholder: 'Password Owner',
-        icon: 'shield-alt',
         showCancelButton: true,
-        confirmButtonColor: '#dc2626',
-        confirmButtonText: 'Lanjut Verifikasi',
+        confirmButtonColor: '#d33',
+        confirmButtonText: 'Validasi',
         cancelButtonText: 'Batal'
-    }).then((res1) => {
-        if (res1.isConfirmed) {
-            if (res1.value !== 'owner123') {
-                return Swal.fire({ icon: 'error', title: 'Akses Ditolak', text: 'Password Owner Salah!' });
-            }
-
-            // Tahap Keamanan 2: Konfirmasi Ketik Validasi Penghapusan Konkrit
-            Swal.fire({
-                title: 'Keamanan Tingkat 2 (Konfirmasi Akhir)',
-                text: `Stok barang tidak akan otomatis kembali jika dihapus langsung dari sini. Ketik kata "HAPUS PERMANEN" untuk menghapus data omset ${formatRupiah(t.total)} ini:`,
-                input: 'text',
-                inputPlaceholder: 'HAPUS PERMANEN',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#b91c1c',
-                confirmButtonText: 'Ya, Hapus Mutlak',
-                cancelButtonText: 'Batal'
-            }).then((res2) => {
-                if (res2.isConfirmed) {
-                    if (res2.value !== 'HAPUS PERMANEN') {
-                        return Swal.fire({ icon: 'error', title: 'Gagal', text: 'Konfirmasi teks tidak cocok. Penghapusan dibatalkan!' });
+    }).then((res) => {
+        if (res.isConfirmed) {
+            if (res.value === 'owner123') {
+                
+                // Tahap Keamanan 2: Sadar Ketik Teks Konfirmasi Kapital
+                Swal.fire({
+                    title: 'Keamanan Tahap 2',
+                    text: 'Ketik "HAPUS TRANSAKSI" (Huruf besar semua) sebagai konfirmasi pembersihan mutlak:',
+                    input: 'text',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    confirmButtonText: 'Hapus Permanen',
+                    cancelButtonText: 'Batal'
+                }).then((final) => {
+                    if (final.isConfirmed) {
+                        if (final.value === 'HAPUS TRANSAKSI') {
+                            
+                            // Eksekusi pembuangan nota tunggal dari database
+                            transactions.splice(idx, 1);
+                            localStorage.setItem('pos_transactions', JSON.stringify(transactions));
+                            
+                            // Segarkan perhitungan finansial dashboard dan tabel kasir harian
+                            calculateDashboard();
+                            updateAllViews();
+                            
+                            Toast.fire({ icon: 'success', title: 'Data transaksi berhasil dihapus!' });
+                        } else {
+                            Toast.fire({ icon: 'error', title: 'Kata kunci salah! Penghapusan dibatalkan.' });
+                        }
                     }
-
-                    // Eksekusi hapus transaksi dari database array
-                    transactions.splice(idx, 1);
-                    localStorage.setItem('pos_transactions', JSON.stringify(transactions));
-
-                    // Refresh metrik data dashboard laporan keuangan
-                    calculateDashboard();
-                    // Sync ulang tampilan kasir history
-                    renderKasirRealtimeHistory();
-
-                    Swal.fire({
-                        icon: 'success',
-                        title: 'Terhapus!',
-                        text: `Transaksi ${t.id} telah resmi dieliminasi dari pembukuan keuangan.`,
-                        timer: 2000
-                    });
-                }
-            });
+                });
+            } else {
+                Swal.fire({ icon: 'error', title: 'Gagal', text: 'Password salah!' });
+            }
         }
     });
 };
@@ -836,10 +790,27 @@ const secureResetLaporan = () => {
                     transactions = [];
                     localStorage.setItem('pos_transactions', JSON.stringify(transactions));
                     calculateDashboard();
-                    renderKasirRealtimeHistory();
+                    updateAllViews();
                     Swal.fire({ icon: 'success', title: 'Data Laporan Bersih!' });
                 }
             });
         }
     });
+};
+
+// --- EXPORT DATA ---
+const exportToExcel = () => {
+    if(transactions.length === 0) return Toast.fire({ icon: 'error', title: 'Belum ada transaksi!' });
+    const data = transactions.map(t => ({ 'ID Transaksi': t.id, 'Tanggal': t.date, 'Pelanggan': t.customer.name, 'Total Omset': t.total, 'Total HPP': t.hpp, 'Laba Bersih': t.laba }));
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Keuangan");
+    XLSX.writeFile(workbook, `Laporan_POS_${Date.now()}.xlsx`);
+};
+
+const exportToPDF = () => {
+    if(transactions.length === 0) return Toast.fire({ icon: 'error', title: 'Belum ada transaksi!' });
+    const element = document.getElementById('reportContainer');
+    const opt = { margin: 0.5, filename: `Laporan_POS_${Date.now()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
+    html2pdf().set(opt).from(element).save();
 };
