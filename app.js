@@ -320,7 +320,13 @@ const renderStok = () => {
 const renderKelolaBarang = () => {
     const tbody = document.getElementById('kelolaTableBody');
     tbody.innerHTML = '';
+    
+    let totalModalSemuaBarang = 0; // Variabel penampung nilai modal total
+
     products.forEach((p, idx) => {
+        // Akumulasi perhitungan HPP x Stok ke total modal
+        totalModalSemuaBarang += (p.hpp * p.stock);
+
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td class="p-3 border-b dark:border-gray-600">
@@ -339,6 +345,12 @@ const renderKelolaBarang = () => {
             </tr>
         `;
     });
+
+    // Menampilkan total modal ke elemen HTML
+    const totalModalEl = document.getElementById('totalModalBarang');
+    if (totalModalEl) {
+        totalModalEl.innerText = formatRupiah(totalModalSemuaBarang);
+    }
 };
 
 const saveProduct = (e) => {
@@ -347,20 +359,23 @@ const saveProduct = (e) => {
     const itemObj = {
         id: document.getElementById('itemSku').value.trim(),
         name: document.getElementById('itemName').value.trim(),
-        hpp: parseInt(document.getElementById('itemHpp').value),
-        price: parseInt(document.getElementById('itemPrice').value),
-        stock: parseInt(document.getElementById('itemStock').value)
+        hpp: parseInt(document.getElementById('itemHpp').value) || 0,
+        price: parseInt(document.getElementById('itemPrice').value) || 0,
+        stock: parseInt(document.getElementById('itemStock').value) || 0
     };
 
-    if (idObj !== '') {
-        // Edit Mode
-        products[idObj] = itemObj;
-        Toast.fire({ icon: 'success', title: 'Barang berhasil diupdate' });
-    } else {
-        // Cek SKU duplikat
-        if(products.find(p => p.id === itemObj.id)) return Swal.fire({icon:'error', title:'SKU Sudah Ada!'});
+    if (idObj === "") {
+        // Tambah baru, cek duplikasi SKU
+        if (products.some(p => p.id === itemObj.id)) {
+            return Swal.fire({ icon: 'error', title: 'Gagal', text: 'SKU sudah terdaftar!' });
+        }
         products.push(itemObj);
-        Toast.fire({ icon: 'success', title: 'Barang baru ditambahkan' });
+        Toast.fire({ icon: 'success', title: 'Barang berhasil ditambahkan' });
+    } else {
+        // Update data lama
+        const idx = parseInt(idObj);
+        products[idx] = itemObj;
+        Toast.fire({ icon: 'success', title: 'Barang berhasil diupdate' });
     }
 
     localStorage.setItem('pos_products', JSON.stringify(products));
@@ -372,7 +387,6 @@ window.editProduct = (idx) => {
     const p = products[idx];
     document.getElementById('editId').value = idx;
     document.getElementById('itemSku').value = p.id;
-    document.getElementById('itemSku').setAttribute('readonly', true); // SKU tidak boleh diedit
     document.getElementById('itemName').value = p.name;
     document.getElementById('itemHpp').value = p.hpp;
     document.getElementById('itemPrice').value = p.price;
@@ -381,8 +395,13 @@ window.editProduct = (idx) => {
 
 window.deleteProduct = (idx) => {
     Swal.fire({
-        title: 'Hapus Barang?', text: "Data tidak bisa dikembalikan!", icon: 'warning',
-        showCancelButton: true, confirmButtonColor: '#d33', cancelButtonColor: '#3085d6', confirmButtonText: 'Ya, Hapus!'
+        title: 'Hapus Barang?',
+        text: "Data barang akan dihapus permanen!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Ya, Hapus!'
     }).then((result) => {
         if (result.isConfirmed) {
             products.splice(idx, 1);
@@ -396,82 +415,72 @@ window.deleteProduct = (idx) => {
 const resetProductForm = () => {
     document.getElementById('formBarang').reset();
     document.getElementById('editId').value = '';
-    document.getElementById('itemSku').removeAttribute('readonly');
 };
 
-// --- LAPORAN KEUANGAN & DASHBOARD (Khusus Owner) ---
+// --- LAPORAN & DASHBOARD ---
 const calculateDashboard = () => {
-    let tOmset = 0;
-    let tHpp = 0;
-    
+    let totalOmset = 0;
+    let totalHpp = 0;
+    let totalLaba = 0;
+
+    transactions.forEach(t => {
+        totalOmset += t.total;
+        totalHpp += t.hpp;
+        totalLaba += t.laba;
+    });
+
+    const marginProfit = totalOmset > 0 ? Math.round((totalLaba / totalOmset) * 100) : 0;
+
+    document.getElementById('repOmset').innerText = formatRupiah(totalOmset);
+    document.getElementById('repHpp').innerText = formatRupiah(totalHpp);
+    document.getElementById('repLaba').innerText = formatRupiah(totalLaba);
+    document.getElementById('repMargin').innerText = `${marginProfit}%`;
+
+    renderRiwayat();
+};
+
+const renderRiwayat = () => {
     const tbody = document.getElementById('riwayatTableBody');
     tbody.innerHTML = '';
-
-    // Balik urutan transaksi agar yang terbaru di atas
-    const recentTrx = [...transactions].reverse();
-
-    recentTrx.forEach(t => {
-        tOmset += t.total;
-        tHpp += t.hpp;
-
-        const totalItems = t.items.reduce((sum, i) => sum + i.qty, 0);
-
+    [...transactions].reverse().forEach(t => {
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td class="p-3 border-b dark:border-gray-600 text-xs">${t.date}</td>
                 <td class="p-3 border-b dark:border-gray-600 font-mono text-xs">${t.id}</td>
-                <td class="p-3 border-b dark:border-gray-600">${totalItems} item</td>
-                <td class="p-3 border-b dark:border-gray-600 font-bold text-green-600 dark:text-green-400">${formatRupiah(t.total)}</td>
+                <td class="p-3 border-b dark:border-gray-600">${t.items.reduce((sum, item) => sum + item.qty, 0)}</td>
+                <td class="p-3 border-b dark:border-gray-600 font-bold text-green-600">${formatRupiah(t.total)}</td>
             </tr>
         `;
     });
-
-    const tLaba = tOmset - tHpp;
-    const margin = tOmset > 0 ? ((tLaba / tOmset) * 100).toFixed(1) : 0;
-
-    document.getElementById('repOmset').innerText = formatRupiah(tOmset);
-    document.getElementById('repHpp').innerText = formatRupiah(tHpp);
-    document.getElementById('repLaba').innerText = formatRupiah(tLaba);
-    document.getElementById('repMargin').innerText = `${margin}%`;
 };
 
-// --- FITUR EKSPOR ---
+// --- EXPORT DATA ---
 const exportToExcel = () => {
-    if(transactions.length === 0) return Toast.fire({ icon: 'error', title: 'Belum ada data transaksi' });
+    if(transactions.length === 0) return Toast.fire({ icon: 'error', title: 'Belum ada transaksi!' });
     
-    // Siapkan data untuk excel
-    const dataForExcel = transactions.map(t => ({
-        'Waktu Transaksi': t.date,
+    const data = transactions.map(t => ({
         'ID Transaksi': t.id,
-        'Total Belanja': t.total,
-        'Total Modal (HPP)': t.hpp,
-        'Laba': t.laba,
-        'Detail Item Terjual': t.items.map(i => `${i.name} (x${i.qty})`).join(', ')
+        'Tanggal': t.date,
+        'Total Omset': t.total,
+        'Total HPP': t.hpp,
+        'Laba Bersih': t.laba
     }));
 
-    const worksheet = XLSX.utils.json_to_sheet(dataForExcel);
+    const worksheet = XLSX.utils.json_to_sheet(data);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Penjualan");
-    XLSX.writeFile(workbook, `Laporan_Keuangan_POS_${new Date().getTime()}.xlsx`);
-    Toast.fire({ icon: 'success', title: 'File Excel berhasil didownload' });
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Keuangan");
+    XLSX.writeFile(workbook, `Laporan_POS_${Date.now()}.xlsx`);
 };
 
 const exportToPDF = () => {
-    if(transactions.length === 0) return Toast.fire({ icon: 'error', title: 'Belum ada data transaksi' });
-
-    // Tambahkan style sementara agar PDF jelas saat Dark Mode aktif
+    if(transactions.length === 0) return Toast.fire({ icon: 'error', title: 'Belum ada transaksi!' });
     const element = document.getElementById('reportContainer');
     const opt = {
         margin:       0.5,
-        filename:     `Laporan_Keuangan_POS_${new Date().getTime()}.pdf`,
+        filename:     `Laporan_POS_${Date.now()}.pdf`,
         image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+        html2canvas:  { scale: 2 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
-
-    // Peringatan jika di mode gelap, text putih bisa hilang di PDF background putih.
-    // html2pdf akan menangkap persis seperti di layar, jadi pastikan bagus.
-    html2pdf().set(opt).from(element).save().then(() => {
-        Toast.fire({ icon: 'success', title: 'File PDF berhasil didownload' });
-    });
+    html2pdf().set(opt).from(element).save();
 };
