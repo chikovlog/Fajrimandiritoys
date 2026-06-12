@@ -16,7 +16,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
@@ -100,7 +99,7 @@
                         <input type="text" id="searchProduct" placeholder="Cari nama barang atau SKU..." class="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
                     <div id="productList" class="p-4 grid grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto flex-grow items-start content-start">
-                        </div>
+                    </div>
                 </div>
                 <div class="flex flex-col h-full bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <div class="p-4 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 text-center font-bold">
@@ -145,7 +144,7 @@
                                 </tr>
                             </thead>
                             <tbody id="stokTableBody" class="text-sm divide-y dark:divide-gray-700">
-                                </tbody>
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -184,7 +183,13 @@
                         </form>
                     </div>
                     <div class="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 overflow-hidden flex flex-col">
-                        <h2 class="text-xl font-bold mb-4">Daftar Kelola Barang</h2>
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                            <h2 class="text-xl font-bold">Daftar Kelola Barang</h2>
+                            <div class="bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg text-sm">
+                                <span class="text-gray-500 dark:text-gray-400">Total Nilai Modal:</span>
+                                <span id="totalModalBarang" class="font-bold text-blue-600 dark:text-blue-400">Rp 0</span>
+                            </div>
+                        </div>
                         <div class="overflow-y-auto flex-grow">
                             <table class="w-full text-left border-collapse">
                                 <thead>
@@ -196,7 +201,7 @@
                                     </tr>
                                 </thead>
                                 <tbody id="kelolaTableBody" class="text-sm divide-y dark:divide-gray-700">
-                                    </tbody>
+                                </tbody>
                             </table>
                         </div>
                     </div>
@@ -250,7 +255,7 @@
                                 </tr>
                             </thead>
                             <tbody id="riwayatTableBody" class="text-sm divide-y dark:divide-gray-700">
-                                </tbody>
+                            </tbody>
                         </table>
                     </div>
                 </div>
