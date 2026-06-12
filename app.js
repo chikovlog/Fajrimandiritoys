@@ -1,7 +1,6 @@
 // --- STATE & DATA AWAL ---
 let currentUser = null;
 let theme = localStorage.getItem('theme') || 'light';
-let receiptWidthFormat = '58mm';
 
 let products = JSON.parse(localStorage.getItem('pos_products')) || [
     { id: 'SKU-001', name: 'Layanan Cuci Komplit', hpp: 3000, price: 6000, stock: 999 },
@@ -15,7 +14,7 @@ let transactions = JSON.parse(localStorage.getItem('pos_transactions')) || [];
 
 // --- UTILITAS UI ---
 const Toast = Swal.mixin({
-    toast: true, position: 'top-end', showConfirmButton: false, timer: 1500, timerProgressBar: true
+    toast: true, position: 'top-end', showConfirmButton: false, timer: 2000, timerProgressBar: true
 });
 
 const formatRupiah = (angka) => {
@@ -26,7 +25,6 @@ document.addEventListener('DOMContentLoaded', () => {
     applyTheme(theme);
     checkLoginSession();
     setupEventListeners();
-    renderReceiptPreview();
 });
 
 const applyTheme = (currentTheme) => {
@@ -101,7 +99,7 @@ const renderApp = () => {
     updateAllViews();
 };
 
-// --- EVENTS ---
+// --- NAVIGASI ---
 const setupEventListeners = () => {
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -115,23 +113,11 @@ const setupEventListeners = () => {
     });
 
     document.getElementById('searchProduct').addEventListener('input', (e) => renderProducts(e.target.value));
-    document.getElementById('uangBayar').addEventListener('input', () => { calculateChange(); renderReceiptPreview(); });
-    document.getElementById('diskonTrx').addEventListener('input', () => { updateCartUI(); renderReceiptPreview(); });
-    
-    document.getElementById('custName').addEventListener('input', renderReceiptPreview);
-    document.getElementById('custPhone').addEventListener('input', renderReceiptPreview);
-    document.getElementById('custAddress').addEventListener('input', renderReceiptPreview);
-
+    document.getElementById('uangBayar').addEventListener('input', calculateChange);
     document.getElementById('btnCheckout').addEventListener('click', processCheckout);
     document.getElementById('formBarang').addEventListener('submit', saveProduct);
     document.getElementById('btnResetForm').addEventListener('click', resetProductForm);
     document.getElementById('btnResetLaporan').addEventListener('click', secureResetLaporan);
-    
-    document.getElementById('btnFormat58').addEventListener('click', () => switchReceiptFormat('58mm'));
-    document.getElementById('btnFormat80').addEventListener('click', () => switchReceiptFormat('80mm'));
-    
-    // Pemicu Cetak Mutlak Bypass
-    document.getElementById('btnPrintLive').addEventListener('click', executeBypassPrint);
 };
 
 const switchView = (viewId) => {
@@ -140,32 +126,13 @@ const switchView = (viewId) => {
     if(viewId === 'view-laporan') calculateDashboard();
 };
 
-const switchReceiptFormat = (format) => {
-    receiptWidthFormat = format;
-    const btn58 = document.getElementById('btnFormat58');
-    const btn80 = document.getElementById('btnFormat80');
-    const paper = document.getElementById('thermalPaper');
-
-    if(format === '58mm') {
-        btn58.className = "px-2.5 py-1 rounded-md font-bold bg-white dark:bg-gray-800 shadow-sm transition text-gray-900 dark:text-white";
-        btn80.className = "px-2.5 py-1 rounded-md transition text-gray-500 dark:text-gray-400";
-        paper.className = "bg-white text-gray-900 p-4 shadow-md font-mono text-xs border border-gray-300 transition-all duration-200 w-[260px]";
-    } else {
-        btn80.className = "px-2.5 py-1 rounded-md font-bold bg-white dark:bg-gray-800 shadow-sm transition text-gray-900 dark:text-white";
-        btn58.className = "px-2.5 py-1 rounded-md transition text-gray-500 dark:text-gray-400";
-        paper.className = "bg-white text-gray-900 p-4 shadow-md font-mono text-xs border border-gray-300 transition-all duration-200 w-[360px]";
-    }
-    renderReceiptPreview();
-};
-
 const updateAllViews = () => {
     renderProducts();
     renderStok();
     renderKelolaBarang();
-    renderKasirHistory(); // Memuat daftar riwayat kasir harian
 };
 
-// --- KASIR ENGINE ---
+// --- LOGIKA KASIR ---
 const renderProducts = (searchQuery = '') => {
     const list = document.getElementById('productList');
     list.innerHTML = '';
@@ -175,10 +142,10 @@ const renderProducts = (searchQuery = '') => {
         const div = document.createElement('div');
         div.className = `p-3 border rounded-xl cursor-pointer transition transform hover:scale-105 select-none ${p.stock <= 0 ? 'bg-red-50 border-red-200 opacity-60' : 'bg-gray-50 dark:bg-gray-700 dark:border-gray-600 hover:border-blue-500'}`;
         div.innerHTML = `
-            <div class="text-[10px] text-gray-400 font-mono">${p.id}</div>
-            <div class="font-bold text-xs line-clamp-2 min-h-[32px]">${p.name}</div>
-            <div class="text-blue-500 font-bold text-sm mt-1">${formatRupiah(p.price)}</div>
-            <div class="text-[10px] text-gray-400">Stok: ${p.stock}</div>
+            <div class="text-xs text-gray-500 font-mono mb-1">${p.id}</div>
+            <div class="font-bold text-sm mb-1 line-clamp-2">${p.name}</div>
+            <div class="text-blue-600 dark:text-blue-400 font-bold">${formatRupiah(p.price)}</div>
+            <div class="text-xs mt-1 text-gray-400">Stok: ${p.stock}</div>
         `;
         if(p.stock > 0) div.onclick = () => addToCart(p);
         list.appendChild(div);
@@ -188,313 +155,104 @@ const renderProducts = (searchQuery = '') => {
 const addToCart = (product) => {
     const existing = cart.find(item => item.id === product.id);
     if (existing) {
-        if (existing.qty >= product.stock) return Toast.fire({ icon: 'warning', title: 'Stok terbatas!' });
+        if (existing.qty >= product.stock) return Toast.fire({ icon: 'warning', title: 'Stok tidak mencukupi!' });
         existing.qty++;
     } else {
         cart.push({ ...product, qty: 1 });
     }
     updateCartUI();
-    renderReceiptPreview();
-};
-
-window.updateCartItemPrice = (index, value, fieldType) => {
-    let item = cart[index];
-    let num = parseFloat(value) || 0;
-    let minPriceAllowed = Math.ceil(item.hpp * 1.30);
-
-    if (fieldType === 'price') {
-        if (num < minPriceAllowed) {
-            Swal.fire({
-                icon: 'warning',
-                title: 'Margin Terlalu Rendah',
-                text: `Harga ditolak! Batas keuntungan minimal 30% dari modal. Harga disesuaikan ke minimal aman: ${formatRupiah(minPriceAllowed)}`,
-                timer: 3000
-            });
-            item.price = minPriceAllowed;
-        } else {
-            item.price = Math.ceil(num);
-        }
-    } else if (fieldType === 'margin') {
-        if (num < 30) {
-            Swal.fire({ icon: 'warning', title: 'Margin Dikunci', text: 'Keuntungan minimal diatur sistem sebesar 30% dari HPP.', timer: 2000 });
-            num = 30;
-        }
-        item.price = Math.ceil(item.hpp * (1 + (num / 100)));
-    }
-
-    updateCartUI();
-    renderReceiptPreview();
 };
 
 const updateCartUI = () => {
-    const container = document.getElementById('cartItems');
-    container.innerHTML = '';
-    let subtotal = 0;
+    const cartContainer = document.getElementById('cartItems');
+    cartContainer.innerHTML = '';
+    let total = 0;
 
     if (cart.length === 0) {
-        container.innerHTML = `<div class="text-center text-gray-400 mt-10 text-sm">Keranjang masih kosong</div>`;
+        cartContainer.innerHTML = `<div class="text-center text-gray-400 mt-10 text-sm">Keranjang masih kosong</div>`;
     } else {
-        cart.forEach((item, idx) => {
-            subtotal += item.price * item.qty;
-            let currentMarginPct = Math.round(((item.price - item.hpp) / item.hpp) * 100);
-
-            container.innerHTML += `
-                <div class="p-3 bg-gray-50 dark:bg-gray-700/60 rounded-xl border dark:border-gray-600 space-y-2">
-                    <div class="flex justify-between items-start gap-2">
-                        <div class="w-4/5">
-                            <h4 class="text-xs font-bold truncate">${item.name}</h4>
-                            <p class="text-[10px] text-gray-400">HPP/Modal: ${formatRupiah(item.hpp)}</p>
-                        </div>
-                        <button onclick="removeCartItem(${idx})" class="text-red-400 hover:text-red-600 text-xs"><i class="fas fa-trash"></i></button>
+        cart.forEach((item, index) => {
+            total += item.price * item.qty;
+            cartContainer.innerHTML += `
+                <div class="flex justify-between items-center p-2 bg-gray-50 dark:bg-gray-700 rounded border dark:border-gray-600">
+                    <div class="w-1/2">
+                        <div class="text-sm font-bold truncate">${item.name}</div>
+                        <div class="text-xs text-blue-600 dark:text-blue-400">${formatRupiah(item.price)}</div>
                     </div>
-
-                    <div class="grid grid-cols-2 gap-2 text-[11px] bg-white dark:bg-gray-800 p-2 rounded-lg border dark:border-gray-600">
-                        <div>
-                            <span class="block text-[9px] text-gray-400">Harga Jual (Rp)</span>
-                            <input type="number" value="${item.price}" onchange="updateCartItemPrice(${idx}, this.value, 'price')" class="w-full bg-transparent font-bold text-blue-500 outline-none">
-                        </div>
-                        <div>
-                            <span class="block text-[9px] text-gray-400">Profit Margin (%)</span>
-                            <input type="number" value="${currentMarginPct}" onchange="updateCartItemPrice(${idx}, this.value, 'margin')" class="w-full bg-transparent font-bold text-purple-500 outline-none">
-                        </div>
-                    </div>
-
-                    <div class="flex justify-between items-center text-xs pt-1 border-t border-dashed dark:border-gray-600">
-                        <div class="flex items-center gap-2">
-                            <button onclick="changeQty(${idx}, -1)" class="w-5 h-5 bg-gray-200 dark:bg-gray-600 rounded text-center">-</button>
-                            <span class="font-bold">${item.qty}</span>
-                            <button onclick="changeQty(${idx}, 1)" class="w-5 h-5 bg-gray-200 dark:bg-gray-600 rounded text-center">+</button>
-                        </div>
-                        <span class="font-bold text-gray-600 dark:text-gray-300">${formatRupiah(item.price * item.qty)}</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="changeQty(${index}, -1)" class="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded>-</button>
+                        <span class="text-sm font-bold w-4 text-center">${item.qty}</span>
+                        <button onclick="changeQty(${index}, 1)" class="w-6 h-6 bg-gray-200 dark:bg-gray-600 rounded">+</button>
                     </div>
                 </div>
             `;
         });
     }
-
-    let diskon = parseInt(document.getElementById('diskonTrx').value || 0);
-    let totalAkhir = Math.max(0, subtotal - diskon);
-
-    document.getElementById('cartSubtotal').innerText = formatRupiah(subtotal);
-    document.getElementById('cartTotal').innerText = formatRupiah(totalAkhir);
-    document.getElementById('cartTotal').setAttribute('data-subtotal', subtotal);
-    document.getElementById('cartTotal').setAttribute('data-total', totalAkhir);
+    document.getElementById('cartTotal').innerText = formatRupiah(total);
+    document.getElementById('cartTotal').setAttribute('data-total', total);
     calculateChange();
 };
 
-window.changeQty = (idx, delta) => {
-    let item = cart[idx];
-    let prod = products.find(p => p.id === item.id);
+window.changeQty = (index, delta) => {
+    const item = cart[index];
+    const product = products.find(p => p.id === item.id);
     item.qty += delta;
-    if(item.qty > prod.stock) { item.qty = prod.stock; Toast.fire({icon:'warning', title:'Stok habis'}); }
-    if(item.qty <= 0) cart.splice(idx, 1);
+    if (item.qty > product.stock) { item.qty = product.stock; Toast.fire({ icon: 'warning', title: 'Maksimal stok tercapai!' }); }
+    if (item.qty <= 0) cart.splice(index, 1);
     updateCartUI();
-    renderReceiptPreview();
-};
-
-window.removeCartItem = (idx) => {
-    cart.splice(idx, 1);
-    updateCartUI();
-    renderReceiptPreview();
 };
 
 const calculateChange = () => {
-    let total = parseInt(document.getElementById('cartTotal').getAttribute('data-total') || 0);
-    let bayar = parseInt(document.getElementById('uangBayar').value || 0);
-    let kembali = bayar - total;
-    let el = document.getElementById('uangKembali');
+    const total = parseInt(document.getElementById('cartTotal').getAttribute('data-total') || 0);
+    const bayar = parseInt(document.getElementById('uangBayar').value || 0);
+    const kembali = bayar - total;
+    const kembaliEl = document.getElementById('uangKembali');
 
     if (bayar > 0 && kembali >= 0) {
-        el.innerText = formatRupiah(kembali);
-        el.className = 'font-bold text-green-500 text-sm';
+        kembaliEl.innerText = formatRupiah(kembali);
+        kembaliEl.className = 'text-lg font-bold text-green-500';
     } else if (bayar > 0 && kembali < 0) {
-        el.innerText = 'Uang Kurang!';
-        el.className = 'font-bold text-red-500 text-sm';
+        kembaliEl.innerText = "Uang Kurang!";
+        kembaliEl.className = 'text-lg font-bold text-red-500';
     } else {
-        el.innerText = 'Rp 0';
-        el.className = 'font-bold text-gray-500 text-sm';
+        kembaliEl.innerText = 'Rp 0';
+        kembaliEl.className = 'text-lg text-gray-600 dark:text-gray-300';
     }
 };
 
-// --- SOLUSI UTAMA: FUNGSI BYPASS PRINTER ANTI NOTA KOSONG ---
-const executeBypassPrint = () => {
-    let printSection = document.getElementById('printSection');
-    if (!printSection) {
-        printSection = document.createElement('div');
-        printSection.id = 'printSection';
-        document.body.appendChild(printSection);
-    }
-    // Salin struktur html struk live preview ke kontainer cetak terisolasi
-    printSection.innerHTML = document.getElementById('thermalPaper').innerHTML;
-    window.print();
-};
-
-// --- LIVE PREVIEW GENERATOR ---
-const renderReceiptPreview = () => {
-    const paper = document.getElementById('thermalPaper');
-    
-    const cName = document.getElementById('custName').value.trim() || '-';
-    const cPhone = document.getElementById('custPhone').value.trim() || '-';
-    const cAddr = document.getElementById('custAddress').value.trim() || '-';
-    const diskon = parseInt(document.getElementById('diskonTrx').value || 0);
-    const bayar = parseInt(document.getElementById('uangBayar').value || 0);
-    const subtotal = parseInt(document.getElementById('cartTotal').getAttribute('data-subtotal') || 0);
-    const total = parseInt(document.getElementById('cartTotal').getAttribute('data-total') || 0);
-    const kembali = Math.max(0, bayar - total);
-
-    const maxChars = (receiptWidthFormat === '58mm') ? 32 : 48;
-    const makeLine = (char = '-') => char.repeat(maxChars);
-    const fillSpace = (left, right) => {
-        let spaceLength = maxChars - (left.length + right.length);
-        return left + " ".repeat(spaceLength > 0 ? spaceLength : 1) + right;
-    };
-
-    let htmlContent = "";
-    
-    htmlContent += `<div class="text-center font-bold text-sm uppercase">FAJRI MANDIRI TOYS</div>`;
-    htmlContent += `<div class="text-center text-[10px]">Pusat Mainan & Elektronik</div>`;
-    htmlContent += `<div class="text-center text-[10px] mb-2">Telp: 0812-XXXX-XXXX</div>`;
-    htmlContent += `<div>${makeLine('.')}</div>`;
-    
-    htmlContent += `<div class="text-[10px]">${fillSpace('Waktu:', new Date().toLocaleDateString('id-ID'))}</div>`;
-    htmlContent += `<div class="text-[10px]">${fillSpace('Kasir:', currentUser ? currentUser.username.toUpperCase() : 'MOCK')}</div>`;
-    
-    if (cName !== '-' || cPhone !== '-' || cAddr !== '-') {
-        htmlContent += `<div>${makeLine('.')}</div>`;
-        htmlContent += `<div class="text-[10px] font-bold">PELANGGAN:</div>`;
-        if(cName !== '-') htmlContent += `<div class="text-[10px]">Nama: ${cName}</div>`;
-        if(cPhone !== '-') htmlContent += `<div class="text-[10px]">HP: ${cPhone}</div>`;
-        if(cAddr !== '-') htmlContent += `<div class="text-[10px] truncate">Alamat: ${cAddr}</div>`;
-    }
-    
-    htmlContent += `<div>${makeLine('-')}</div>`;
-
-    if (cart.length === 0) {
-        htmlContent += `<div class="text-center text-gray-400 italic text-[11px] my-4">[ Belum Ada Item ]</div>`;
-    } else {
-        cart.forEach(item => {
-            htmlContent += `<div class="font-bold text-[11px]">${item.name}</div>`;
-            let leftDetails = `  ${item.qty} x ${formatRupiah(item.price).replace('Rp ', '')}`;
-            let rightTotal = formatRupiah(item.price * item.qty).replace('Rp ', '');
-            htmlContent += `<div class="text-[11px]">${fillSpace(leftDetails, rightTotal)}</div>`;
-        });
-    }
-
-    htmlContent += `<div>${makeLine('-')}</div>`;
-    
-    htmlContent += `<div class="text-[11px]">${fillSpace('Subtotal:', formatRupiah(subtotal).replace('Rp ', ''))}</div>`;
-    if(diskon > 0) {
-        htmlContent += `<div class="text-[11px] text-red-600">${fillSpace('Diskon Nota:', '-' + formatRupiah(diskon).replace('Rp ', ''))}</div>`;
-    }
-    htmlContent += `<div class="text-[11px] font-bold">${fillSpace('TOTAL AKHIR:', formatRupiah(total).replace('Rp ', ''))}</div>`;
-    htmlContent += `<div class="text-[11px]">${fillSpace('Tunai Bayar:', formatRupiah(bayar).replace('Rp ', ''))}</div>`;
-    htmlContent += `<div class="text-[11px] font-bold">${fillSpace('Kembalian:', formatRupiah(kembali).replace('Rp ', ''))}</div>`;
-    
-    htmlContent += `<div>${makeLine('.')}</div>`;
-    htmlContent += `<div class="text-center text-[10px] mt-2 font-bold">TERIMA KASIH</div>`;
-
-    paper.innerHTML = htmlContent;
-};
-
-// --- CHECKOUT ---
 const processCheckout = () => {
     if (cart.length === 0) return Toast.fire({ icon: 'error', title: 'Keranjang kosong!' });
-    
     const total = parseInt(document.getElementById('cartTotal').getAttribute('data-total'));
     const bayar = parseInt(document.getElementById('uangBayar').value || 0);
 
     if (bayar < total) return Swal.fire({ icon: 'error', title: 'Gagal', text: 'Uang pembayaran kurang!' });
 
     cart.forEach(cartItem => {
-        const idx = products.findIndex(p => p.id === cartItem.id);
-        if (idx > -1) products[idx].stock -= cartItem.qty;
+        const prodIndex = products.findIndex(p => p.id === cartItem.id);
+        if (prodIndex > -1) products[prodIndex].stock -= cartItem.qty;
     });
 
     const hppTotal = cart.reduce((sum, item) => sum + (item.hpp * item.qty), 0);
-    
     const trx = {
         id: `TRX-${Date.now()}`,
         timestamp: Date.now(),
         date: new Date().toLocaleString('id-ID'),
-        customer: {
-            name: document.getElementById('custName').value.trim() || 'Umum',
-            phone: document.getElementById('custPhone').value.trim() || '-',
-            address: document.getElementById('custAddress').value.trim() || '-'
-        },
         items: [...cart],
-        subtotal: parseInt(document.getElementById('cartTotal').getAttribute('data-subtotal')),
-        diskon: parseInt(document.getElementById('diskonTrx').value || 0),
         total: total,
         hpp: hppTotal,
-        laba: total - hppTotal,
-        bayar: bayar
+        laba: total - hppTotal
     };
-
     transactions.push(trx);
+
     localStorage.setItem('pos_products', JSON.stringify(products));
     localStorage.setItem('pos_transactions', JSON.stringify(transactions));
 
     cart = [];
     document.getElementById('uangBayar').value = '';
-    document.getElementById('diskonTrx').value = '0';
-    document.getElementById('custName').value = '';
-    document.getElementById('custPhone').value = '';
-    document.getElementById('custAddress').value = '';
-
     updateCartUI();
     updateAllViews();
-    renderReceiptPreview();
 
-    Swal.fire({ 
-        title: 'Transaksi Berhasil!', 
-        text: 'Data disimpan. Ingin cetak struk pembeli?',
-        icon: 'success',
-        showCancelButton: true,
-        confirmButtonText: 'Ya, Cetak',
-        cancelButtonText: 'Nanti Saja'
-    }).then((res) => {
-        if(res.isConfirmed) executeBypassPrint();
-    });
-};
-
-// --- NEW: LOGIKA INPUT PANEL RIWAYAT TRANSAKSI DI KASIR ---
-const renderKasirHistory = () => {
-    const container = document.getElementById('kasirHistoryList');
-    if(!container) return;
-    container.innerHTML = '';
-    
-    const todayStr = new Date().toLocaleDateString('id-ID');
-    // Ambil transaksi hari ini saja untuk performa ringan kasir
-    const todayTrx = transactions.filter(t => t.date.includes(todayStr)).reverse();
-    
-    if(todayTrx.length === 0) {
-        container.innerHTML = `<div class="text-gray-400 italic text-center py-3 text-xs">Belum ada transaksi hari ini</div>`;
-        return;
-    }
-    
-    todayTrx.forEach(t => {
-        const timeStr = t.date.split(/[\s,]+/)[1] || t.date; // Ekstrak jam saja
-        container.innerHTML += `
-            <div class="flex justify-between items-center bg-white dark:bg-gray-800 p-2 rounded-lg border dark:border-gray-700 shadow-sm text-xs">
-                <div class="truncate max-w-[70%]">
-                    <span class="font-mono font-bold text-blue-500">${t.id}</span>
-                    <span class="text-gray-400 font-normal px-1">[${timeStr}]</span>
-                    <span class="text-gray-600 dark:text-gray-300 font-semibold">• ${t.customer.name}</span>
-                </div>
-                <div class="flex items-center gap-3">
-                    <span class="font-bold text-green-600">${formatRupiah(t.total)}</span>
-                    <button onclick="printOldTransactionFromKasir('${t.id}')" class="text-gray-400 hover:text-blue-500 transition" title="Cetak Nota">
-                        <i class="fas fa-print"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-    });
-};
-
-window.printOldTransactionFromKasir = (id) => {
-    const idx = transactions.findIndex(t => t.id === id);
-    if (idx > -1) window.printOldTransaction(idx);
+    Swal.fire({ icon: 'success', title: 'Transaksi Sukses!', text: `Kembalian: ${formatRupiah(bayar - total)}` });
 };
 
 // --- STOK & KELOLA BARANG ---
@@ -506,7 +264,7 @@ const renderStok = () => {
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td class="p-3 border-b dark:border-gray-600 font-mono text-xs">${p.id}</td>
                 <td class="p-3 border-b dark:border-gray-600 font-semibold">${p.name}</td>
-                <td class="p-3 border-b dark:border-gray-600 text-blue-500">${formatRupiah(p.price)}</td>
+                <td class="p-3 border-b dark:border-gray-600 text-blue-600 dark:text-blue-400">${formatRupiah(p.price)}</td>
                 <td class="p-3 border-b dark:border-gray-600 font-bold ${p.stock <= 5 ? 'text-red-500' : ''}">${p.stock}</td>
             </tr>
         `;
@@ -516,29 +274,29 @@ const renderStok = () => {
 const renderKelolaBarang = () => {
     const tbody = document.getElementById('kelolaTableBody');
     tbody.innerHTML = '';
-    let totalModal = 0;
+    let totalModalSemuaBarang = 0;
 
     products.forEach((p, idx) => {
-        totalModal += (p.hpp * p.stock);
+        totalModalSemuaBarang += (p.hpp * p.stock);
         tbody.innerHTML += `
             <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
                 <td class="p-3 border-b dark:border-gray-600">
-                    <div class="font-mono text-xs text-gray-400">${p.id}</div>
-                    <div class="font-bold text-xs">${p.name}</div>
+                    <div class="font-mono text-xs text-gray-500">${p.id}</div>
+                    <div class="font-bold">${p.name}</div>
                 </td>
-                <td class="p-3 border-b dark:border-gray-600 text-xs">
-                    <div>Modal: ${formatRupiah(p.hpp)}</div>
-                    <div class="text-blue-500">Jual: ${formatRupiah(p.price)}</div>
+                <td class="p-3 border-b dark:border-gray-600 text-sm">
+                    <div><span class="text-gray-500">HPP:</span> ${formatRupiah(p.hpp)}</div>
+                    <div><span class="text-gray-500">Jual:</span> <span class="text-blue-600 dark:text-blue-400 font-bold">${formatRupiah(p.price)}</span></div>
                 </td>
-                <td class="p-3 border-b dark:border-gray-600 font-bold text-xs">${p.stock}</td>
+                <td class="p-3 border-b dark:border-gray-600 font-bold">${p.stock}</td>
                 <td class="p-3 border-b dark:border-gray-600 text-right space-x-1">
-                    <button onclick="editProduct(${idx})" class="bg-yellow-500 text-white p-1 rounded text-xs"><i class="fas fa-edit"></i></button>
-                    <button onclick="deleteProduct(${idx})" class="bg-red-500 text-white p-1 rounded text-xs"><i class="fas fa-trash"></i></button>
+                    <button onclick="editProduct(${idx})" class="bg-yellow-500 text-white px-2 py-1 rounded text-xs"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteProduct(${idx})" class="bg-red-500 text-white px-2 py-1 rounded text-xs"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
         `;
     });
-    document.getElementById('totalModalBarang').innerText = formatRupiah(totalModal);
+    document.getElementById('totalModalBarang').innerText = formatRupiah(totalModalSemuaBarang);
 };
 
 const saveProduct = (e) => {
@@ -558,7 +316,6 @@ const saveProduct = (e) => {
     } else {
         products[parseInt(idObj)] = itemObj;
     }
-
     localStorage.setItem('pos_products', JSON.stringify(products));
     resetProductForm();
     updateAllViews();
@@ -575,8 +332,8 @@ window.editProduct = (idx) => {
 };
 
 window.deleteProduct = (idx) => {
-    Swal.fire({ title: 'Hapus?', text: "Data akan hilang permanen", icon: 'warning', showCancelButton: true, confirmButtonColor: '#d33', confirmButtonText: 'Hapus' }).then((res) => {
-        if (res.isConfirmed) {
+    Swal.fire({ title: 'Hapus?', text: "Data hilang permanen", icon: 'warning', showCancelButton: true }).then((result) => {
+        if (result.isConfirmed) {
             products.splice(idx, 1);
             localStorage.setItem('pos_products', JSON.stringify(products));
             updateAllViews();
@@ -584,45 +341,42 @@ window.deleteProduct = (idx) => {
     });
 };
 
-const resetProductForm = () => {
-    document.getElementById('formBarang').reset();
-    document.getElementById('editId').value = '';
-};
+const resetProductForm = () => { document.getElementById('formBarang').reset(); document.getElementById('editId').value = ''; };
 
-// --- DASHBOARD REPORT & MANAGEMENT TRANSAKSI ---
+// --- DASHBOARD REPORT PERIODIK ---
 const calculateDashboard = () => {
-    let dOmset = 0, dHpp = 0, dLaba = 0;
-    let wOmset = 0, wHpp = 0, wLaba = 0;
-    let mOmset = 0, mHpp = 0, mLaba = 0;
+    let dayOmset = 0, dayHpp = 0, dayLaba = 0;
+    let weekOmset = 0, weekHpp = 0, weekLaba = 0;
+    let monthOmset = 0, monthHpp = 0, monthLaba = 0;
 
     const now = new Date();
-    const tStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
-    const wStart = tStart - (7 * 24 * 60 * 60 * 1000);
-    const mStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+    const weekStart = todayStart - (7 * 24 * 60 * 60 * 1000);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
     transactions.forEach(t => {
-        const ts = t.timestamp || tStart;
-        if (ts >= tStart) { dOmset += t.total; dHpp += t.hpp; dLaba += t.laba; }
-        if (ts >= wStart) { wOmset += t.total; wHpp += t.hpp; wLaba += t.laba; }
-        if (ts >= mStart) { mOmset += t.total; mHpp += t.hpp; mLaba += t.laba; }
+        const ts = t.timestamp || todayStart;
+        if (ts >= todayStart) { dayOmset += t.total; dayHpp += t.hpp; dayLaba += t.laba; }
+        if (ts >= weekStart) { weekOmset += t.total; weekHpp += t.hpp; weekLaba += t.laba; }
+        if (ts >= monthStart) { monthOmset += t.total; monthHpp += t.hpp; monthLaba += t.laba; }
     });
 
-    const margin = (l, o) => o > 0 ? Math.round((l / o) * 100) : 0;
+    const calcMargin = (laba, omset) => omset > 0 ? Math.round((laba / omset) * 100) : 0;
 
-    document.getElementById('dayOmset').innerText = formatRupiah(dOmset);
-    document.getElementById('dayHpp').innerText = formatRupiah(dHpp);
-    document.getElementById('dayLaba').innerText = formatRupiah(dLaba);
-    document.getElementById('dayMargin').innerText = `${margin(dLaba, dOmset)}%`;
+    document.getElementById('dayOmset').innerText = formatRupiah(dayOmset);
+    document.getElementById('dayHpp').innerText = formatRupiah(dayHpp);
+    document.getElementById('dayLaba').innerText = formatRupiah(dayLaba);
+    document.getElementById('dayMargin').innerText = `${calcMargin(dayLaba, dayOmset)}%`;
 
-    document.getElementById('weekOmset').innerText = formatRupiah(wOmset);
-    document.getElementById('weekHpp').innerText = formatRupiah(wHpp);
-    document.getElementById('weekLaba').innerText = formatRupiah(wLaba);
-    document.getElementById('weekMargin').innerText = `${margin(wLaba, wOmset)}%`;
+    document.getElementById('weekOmset').innerText = formatRupiah(weekOmset);
+    document.getElementById('weekHpp').innerText = formatRupiah(weekHpp);
+    document.getElementById('weekLaba').innerText = formatRupiah(weekLaba);
+    document.getElementById('weekMargin').innerText = `${calcMargin(weekLaba, weekOmset)}%`;
 
-    document.getElementById('monthOmset').innerText = formatRupiah(mOmset);
-    document.getElementById('monthHpp').innerText = formatRupiah(mHpp);
-    document.getElementById('monthLaba').innerText = formatRupiah(mLaba);
-    document.getElementById('monthMargin').innerText = `${margin(mLaba, mOmset)}%`;
+    document.getElementById('monthOmset').innerText = formatRupiah(monthOmset);
+    document.getElementById('monthHpp').innerText = formatRupiah(monthHpp);
+    document.getElementById('monthLaba').innerText = formatRupiah(monthLaba);
+    document.getElementById('monthMargin').innerText = `${calcMargin(monthLaba, monthOmset)}%`;
 
     renderRiwayat();
 };
@@ -630,187 +384,25 @@ const calculateDashboard = () => {
 const renderRiwayat = () => {
     const tbody = document.getElementById('riwayatTableBody');
     tbody.innerHTML = '';
-    
-    [...transactions].reverse().forEach((t, reversedIdx) => {
-        const originalIdx = transactions.length - 1 - reversedIdx; 
-        
+    [...transactions].reverse().forEach(t => {
         tbody.innerHTML += `
-            <tr class="text-xs hover:bg-gray-50 dark:hover:bg-gray-700">
-                <td class="p-3 border-b dark:border-gray-600 whitespace-nowrap">${t.date}</td>
-                <td class="p-3 border-b dark:border-gray-600 font-mono text-[11px]">${t.id}</td>
-                <td class="p-3 border-b dark:border-gray-600 font-semibold">${t.customer ? t.customer.name : 'Umum'}</td>
-                <td class="p-3 border-b dark:border-gray-600">${t.items.reduce((s, i) => s + i.qty, 0)} Item</td>
-                <td class="p-3 border-b dark:border-gray-600 font-bold text-green-500">${formatRupiah(t.total)}</td>
-                <td class="p-3 border-b dark:border-gray-600 text-center space-x-1 whitespace-nowrap">
-                    <button onclick="printOldTransaction(${originalIdx})" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded text-[11px] font-medium transition"><i class="fas fa-print"></i> Cetak</button>
-                    <button onclick="secureEditTransaction(${originalIdx})" class="bg-orange-500 hover:bg-orange-600 text-white px-2 py-1 rounded text-[11px] font-medium transition"><i class="fas fa-edit"></i> Edit</button>
-                    <button onclick="secureDeleteTransaction(${originalIdx})" class="bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[11px] font-medium transition"><i class="fas fa-trash-alt"></i> Hapus</button>
-                </td>
+            <tr class="hover:bg-gray-50 dark:hover:bg-gray-700 text-xs">
+                <td class="p-3 border-b dark:border-gray-600">${t.date}</td>
+                <td class="p-3 border-b dark:border-gray-600 font-mono">${t.id}</td>
+                <td class="p-3 border-b dark:border-gray-600">${t.items.reduce((sum, item) => sum + item.qty, 0)} item</td>
+                <td class="p-3 border-b dark:border-gray-600 font-bold text-green-600">${formatRupiah(t.total)}</td>
             </tr>
         `;
     });
 };
 
-window.printOldTransaction = (idx) => {
-    const t = transactions[idx];
-    
-    const tempCart = [...cart];
-    const tempName = document.getElementById('custName').value;
-    const tempPhone = document.getElementById('custPhone').value;
-    const tempAddr = document.getElementById('custAddress').value;
-    const tempDiskon = document.getElementById('diskonTrx').value;
-    const tempBayar = document.getElementById('uangBayar').value;
-
-    cart = t.items;
-    document.getElementById('custName').value = t.customer.name;
-    document.getElementById('custPhone').value = t.customer.phone;
-    document.getElementById('custAddress').value = t.customer.address;
-    document.getElementById('diskonTrx').value = t.diskon;
-    document.getElementById('uangBayar').value = t.bayar || t.total;
-
-    updateCartUI();
-    renderReceiptPreview();
-
-    setTimeout(() => {
-        executeBypassPrint();
-        
-        cart = tempCart;
-        document.getElementById('custName').value = tempName;
-        document.getElementById('custPhone').value = tempPhone;
-        document.getElementById('custAddress').value = tempAddr;
-        document.getElementById('diskonTrx').value = tempDiskon;
-        document.getElementById('uangBayar').value = tempBayar;
-        updateCartUI();
-        renderReceiptPreview();
-    }, 150);
-};
-
-window.secureEditTransaction = (idx) => {
-    if (cart.length > 0) return Swal.fire({ icon: 'error', title: 'Kasir Isi', text: 'Selesaikan transaksi kasir aktif saat ini terlebih dahulu!' });
-    const t = transactions[idx];
-
-    Swal.fire({
-        title: 'Koreksi Transaksi',
-        text: `Kembalikan barang ${t.id} ke kasir untuk diedit? Riwayat ini akan dihapus sementara untuk menghindari data ganda.`,
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#f97316',
-        confirmButtonText: 'Ya, Edit'
-    }).then((res) => {
-        if (res.isConfirmed) {
-            t.items.forEach(oldItem => {
-                const pIdx = products.findIndex(p => p.id === oldItem.id);
-                if (pIdx > -1) products[pIdx].stock += oldItem.qty;
-            });
-
-            cart = [...t.items];
-            document.getElementById('custName').value = t.customer.name === 'Umum' ? '' : t.customer.name;
-            document.getElementById('custPhone').value = t.customer.phone === '-' ? '' : t.customer.phone;
-            document.getElementById('custAddress').value = t.customer.address === '-' ? '' : t.customer.address;
-            document.getElementById('diskonTrx').value = t.diskon;
-            document.getElementById('uangBayar').value = t.bayar || t.total;
-
-            transactions.splice(idx, 1);
-            localStorage.setItem('pos_products', JSON.stringify(products));
-            localStorage.setItem('pos_transactions', JSON.stringify(transactions));
-
-            updateCartUI();
-            updateAllViews();
-            renderReceiptPreview();
-            switchView('view-kasir');
-        }
-    });
-};
-
-// --- NEW: FUNGSI KEAMANAN GANDA HAPUS TRANSAKSI TUNGGAL ---
-window.secureDeleteTransaction = (idx) => {
-    if (!currentUser || currentUser.role !== 'owner') {
-        Swal.fire({ icon: 'error', title: 'Ditolak', text: 'Hanya Owner yang memiliki izin menghapus nota riwayat!' });
-        return;
-    }
-    
-    const t = transactions[idx];
-
-    // Tahap Keamanan 1: Verifikasi Re-input Password Akun Owner
-    Swal.fire({
-        title: 'Keamanan Tahap 1',
-        text: `Masukkan password Owner untuk memproses penghapusan ${t.id}:`,
-        input: 'password',
-        showCancelButton: true,
-        confirmButtonColor: '#d33',
-        confirmButtonText: 'Validasi',
-        cancelButtonText: 'Batal'
-    }).then((res) => {
-        if (res.isConfirmed) {
-            if (res.value === 'owner123') {
-                
-                // Tahap Keamanan 2: Sadar Ketik Teks Konfirmasi Kapital
-                Swal.fire({
-                    title: 'Keamanan Tahap 2',
-                    text: 'Ketik "HAPUS TRANSAKSI" (Huruf besar semua) sebagai konfirmasi pembersihan mutlak:',
-                    input: 'text',
-                    showCancelButton: true,
-                    confirmButtonColor: '#d33',
-                    confirmButtonText: 'Hapus Permanen',
-                    cancelButtonText: 'Batal'
-                }).then((final) => {
-                    if (final.isConfirmed) {
-                        if (final.value === 'HAPUS TRANSAKSI') {
-                            
-                            // Eksekusi pembuangan nota tunggal dari database
-                            transactions.splice(idx, 1);
-                            localStorage.setItem('pos_transactions', JSON.stringify(transactions));
-                            
-                            // Segarkan perhitungan finansial dashboard dan tabel kasir harian
-                            calculateDashboard();
-                            updateAllViews();
-                            
-                            Toast.fire({ icon: 'success', title: 'Data transaksi berhasil dihapus!' });
-                        } else {
-                            Toast.fire({ icon: 'error', title: 'Kata kunci salah! Penghapusan dibatalkan.' });
-                        }
-                    }
-                });
-            } else {
-                Swal.fire({ icon: 'error', title: 'Gagal', text: 'Password salah!' });
-            }
-        }
-    });
-};
-
 const secureResetLaporan = () => {
-    if (!currentUser || currentUser.role !== 'owner') {
-        Swal.fire({ icon: 'error', title: 'Ditolak', text: 'Hanya Owner yang berhak melakukan reset!' });
-        return;
-    }
-    Swal.fire({ title: 'Tahap 1', text: 'Masukkan password Owner:', input: 'password', showCancelButton: true }).then((res) => {
+    if (!currentUser || currentUser.role !== 'owner') return;
+    Swal.fire({ title: 'Reset Laporan', text: 'Masukkan password owner:', input: 'password', showCancelButton: true }).then((res) => {
         if (res.isConfirmed && res.value === 'owner123') {
-            Swal.fire({ title: 'Tahap 2', text: 'Ketik "RESET LAPORAN" (Kapital):', input: 'text', showCancelButton: true }).then((final) => {
-                if (final.isConfirmed && final.value === 'RESET LAPORAN') {
-                    transactions = [];
-                    localStorage.setItem('pos_transactions', JSON.stringify(transactions));
-                    calculateDashboard();
-                    updateAllViews();
-                    Swal.fire({ icon: 'success', title: 'Data Laporan Bersih!' });
-                }
-            });
+            transactions = [];
+            localStorage.setItem('pos_transactions', JSON.stringify(transactions));
+            calculateDashboard();
         }
     });
-};
-
-// --- EXPORT DATA ---
-const exportToExcel = () => {
-    if(transactions.length === 0) return Toast.fire({ icon: 'error', title: 'Belum ada transaksi!' });
-    const data = transactions.map(t => ({ 'ID Transaksi': t.id, 'Tanggal': t.date, 'Pelanggan': t.customer.name, 'Total Omset': t.total, 'Total HPP': t.hpp, 'Laba Bersih': t.laba }));
-    const worksheet = XLSX.utils.json_to_sheet(data);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Keuangan");
-    XLSX.writeFile(workbook, `Laporan_POS_${Date.now()}.xlsx`);
-};
-
-const exportToPDF = () => {
-    if(transactions.length === 0) return Toast.fire({ icon: 'error', title: 'Belum ada transaksi!' });
-    const element = document.getElementById('reportContainer');
-    const opt = { margin: 0.5, filename: `Laporan_POS_${Date.now()}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2 }, jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' } };
-    html2pdf().set(opt).from(element).save();
 };
