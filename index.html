@@ -2,20 +2,20 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <title>Fajri Mandiri Toys</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem POS Lengkap</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @media print { .no-print { display: none !important; } #printContainer { display: block !important; } }
-        #printContainer { display: none; font-family: monospace; width: 250px; }
+        #printContainer { display: none; padding: 10px; font-family: monospace; width: 250px; }
     </style>
 </head>
 <body class="bg-gray-100">
     <div id="printContainer"></div>
 
-    <div class="p-6">
-        <h1 class="text-2xl font-bold mb-4">Fajri Mandiri Toys</h1>
+    <div id="app" class="p-6">
         <div class="mb-6 flex gap-4">
             <button onclick="switchView('kasir')" class="bg-blue-500 text-white px-4 py-2 rounded">Kasir</button>
             <button onclick="switchView('laporan')" class="bg-green-500 text-white px-4 py-2 rounded">Laporan</button>
@@ -27,15 +27,8 @@
                 <div>
                     <h2 class="font-bold mb-2">Produk</h2>
                     <div id="productGrid" class="grid grid-cols-2 gap-2"></div>
-                    
-                    <div id="captureArea" class="mt-6 bg-white p-4 rounded shadow border">
-                        <div class="flex justify-between items-center mb-2">
-                            <h2 class="font-bold">Aktivitas Penjualan Hari Ini</h2>
-                            <button onclick="captureReport()" class="text-xs bg-gray-800 text-white px-2 py-1 rounded">Capture Laporan</button>
-                        </div>
-                        <div id="kasirHistory" class="text-sm"></div>
-                        <div id="stats" class="mt-4 pt-2 border-t font-bold text-blue-600"></div>
-                    </div>
+                    <h2 class="font-bold mt-6 mb-2">History Penjualan Hari Ini</h2>
+                    <div id="kasirHistory" class="bg-white p-4 rounded shadow"></div>
                 </div>
                 <div class="bg-white p-4 rounded shadow">
                     <h2 class="font-bold mb-4">Keranjang</h2>
@@ -46,24 +39,25 @@
         </div>
 
         <div id="view-laporan" class="view hidden">
-            <h2 class="font-bold text-xl mb-4">Riwayat Global</h2>
+            <h2 class="font-bold text-xl mb-4">Riwayat Transaksi</h2>
             <table class="w-full bg-white shadow rounded">
-                <thead><tr class="border-b text-left"><th class="p-2">Waktu</th><th class="p-2">Total</th><th class="p-2">Aksi</th></tr></thead>
+                <thead><tr class="border-b"><th class="p-2">Waktu</th><th class="p-2">Total</th><th class="p-2">Aksi</th></tr></thead>
                 <tbody id="riwayatTableBody"></tbody>
             </table>
         </div>
 
         <div id="view-barang" class="view hidden">
             <form id="formBarang" class="bg-white p-6 rounded shadow max-w-lg">
+                <input type="hidden" id="editId">
                 <input type="text" id="itemSku" placeholder="SKU" class="block w-full border p-2 mb-2" required>
                 <input type="text" id="itemName" placeholder="Nama Barang" class="block w-full border p-2 mb-2" required>
-                <input type="number" id="itemHpp" placeholder="HPP" oninput="calculatePriceFromMargin()" class="block w-full border p-2 mb-2" required>
+                <input type="number" id="itemHpp" placeholder="HPP (Modal)" oninput="calculatePriceFromMargin()" class="block w-full border p-2 mb-2" required>
                 <div class="flex gap-2">
-                    <input type="number" id="itemMargin" value="30" oninput="calculatePriceFromMargin()" class="w-1/2 border p-2 mb-2">
+                    <input type="number" id="itemMargin" value="30" oninput="calculatePriceFromMargin()" placeholder="Margin %" class="w-1/2 border p-2 mb-2">
                     <input type="number" id="itemPrice" placeholder="Harga Jual" oninput="calculateMarginFromPrice()" class="w-1/2 border p-2 mb-2" required>
                 </div>
                 <input type="number" id="itemStock" placeholder="Stok" class="block w-full border p-2 mb-2" required>
-                <button type="submit" class="bg-blue-600 text-white w-full p-2">Simpan</button>
+                <button type="submit" class="bg-blue-600 text-white w-full p-2">Simpan Barang</button>
             </form>
         </div>
     </div>
