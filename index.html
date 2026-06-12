@@ -119,4 +119,265 @@
 
         <section class="flex-grow bg-gray-100 dark:bg-gray-900 md:h-[calc(100vh-72px)] overflow-y-auto p-4 md:p-6 transition-colors">
             
-            <div id="view-kasir" class="view-section hidden grid grid-cols-1 xl:grid
+            <div id="view-kasir" class="view-section hidden grid grid-cols-1 xl:grid-cols-4 gap-6 h-full">
+                
+                <div class="xl:col-span-2 flex flex-col h-full bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="p-4 border-b dark:border-gray-700">
+                        <input type="text" id="searchProduct" placeholder="Cari nama barang atau SKU..." class="w-full p-3 rounded-lg bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    
+                    <div id="productList" class="p-4 grid grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto flex-grow items-start content-start">
+                    </div>
+
+                    <div class="p-4 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-700/20 max-h-[220px] flex flex-col">
+                        <p class="text-xs font-bold text-gray-400 uppercase mb-2 tracking-wider"><i class="fas fa-history mr-1"></i> Transaksi Terkini (Hari Ini)</p>
+                        <div id="kasirHistoryList" class="space-y-2 flex-grow overflow-y-auto">
+                            </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col h-full bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="p-3 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 text-center font-bold text-sm">
+                        Daftar Belanja
+                    </div>
+                    
+                    <div id="cartItems" class="p-3 flex-grow overflow-y-auto space-y-3">
+                        <div class="text-center text-gray-400 mt-10 text-sm">Keranjang masih kosong</div>
+                    </div>
+
+                    <div class="p-3 border-t dark:border-gray-700 bg-gray-50/50 dark:bg-gray-700/30 space-y-2">
+                        <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wide">Data Pelanggan (Opsional)</p>
+                        <input type="text" id="custName" placeholder="Nama Pelanggan" class="w-full p-1.5 text-xs rounded border dark:bg-gray-800 dark:border-gray-600 outline-none">
+                        <div class="grid grid-cols-2 gap-2">
+                            <input type="text" id="custPhone" placeholder="No. HP" class="p-1.5 text-xs rounded border dark:bg-gray-800 dark:border-gray-600 outline-none">
+                            <input type="text" id="custAddress" placeholder="Alamat Singkat" class="p-1.5 text-xs rounded border dark:bg-gray-800 dark:border-gray-600 outline-none">
+                        </div>
+                    </div>
+
+                    <div class="p-3 border-t dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 space-y-2.5">
+                        <div class="grid grid-cols-2 gap-2">
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-400">Diskon Nota (Rp)</label>
+                                <input type="number" id="diskonTrx" value="0" min="0" class="w-full p-1.5 text-sm rounded bg-white dark:bg-gray-800 border dark:border-gray-600 text-right font-semibold">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-400">Uang Pembeli</label>
+                                <input type="number" id="uangBayar" class="w-full p-1.5 text-sm rounded bg-white dark:bg-gray-800 border dark:border-gray-600 text-right font-bold text-blue-600">
+                            </div>
+                        </div>
+
+                        <div class="border-t border-dashed dark:border-gray-600 pt-2 space-y-1">
+                            <div class="flex justify-between text-xs text-gray-500">
+                                <span>Subtotal</span>
+                                <span id="cartSubtotal">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between font-bold text-base text-gray-900 dark:text-white">
+                                <span>Total Akhir</span>
+                                <span id="cartTotal">Rp 0</span>
+                            </div>
+                            <div class="flex justify-between items-center text-xs pt-1">
+                                <span class="text-gray-500">Kembalian</span>
+                                <span id="uangKembali" class="font-bold">Rp 0</span>
+                            </div>
+                        </div>
+
+                        <button id="btnCheckout" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-lg transition shadow-md text-sm">
+                            Proses Transaksi
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col h-full bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                    <div class="p-3 border-b dark:border-gray-700 bg-gray-50 dark:bg-gray-700/50 flex justify-between items-center">
+                        <span class="font-bold text-xs uppercase tracking-wider text-gray-500"><i class="fas fa-print mr-1"></i> Live Preview</span>
+                        <div class="flex bg-gray-200 dark:bg-gray-600 p-0.5 rounded-md text-xs">
+                            <button id="btnFormat58" class="px-2.5 py-1 rounded-md font-bold bg-white dark:bg-gray-800 shadow-sm transition">58mm</button>
+                            <button id="btnFormat80" class="px-2.5 py-1 rounded-md transition text-gray-500 dark:text-gray-400">80mm</button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-grow p-4 bg-gray-200 dark:bg-gray-950 overflow-y-auto flex flex-col items-center justify-start gap-4">
+                        <div id="thermalPaper" class="bg-white text-gray-900 p-4 shadow-md font-mono text-xs border border-gray-300 transition-all duration-200 w-[260px]">
+                        </div>
+                        
+                        <button id="btnPrintLive" class="w-full max-w-[260px] bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-lg text-xs transition shadow-md flex items-center justify-center gap-2">
+                            <i class="fas fa-print"></i> Cetak Struk Sekarang
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <div id="view-stok" class="view-section hidden">
+                <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                    <h2 class="text-xl font-bold mb-4 border-b dark:border-gray-700 pb-2">Informasi Stok Barang</h2>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-gray-50 dark:bg-gray-700 text-sm uppercase">
+                                    <th class="p-3 border-b dark:border-gray-600">SKU</th>
+                                    <th class="p-3 border-b dark:border-gray-600">Nama Barang</th>
+                                    <th class="p-3 border-b dark:border-gray-600">Harga Jual Default</th>
+                                    <th class="p-3 border-b dark:border-gray-600">Stok Tersedia</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stokTableBody" class="text-sm divide-y dark:divide-gray-700">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-kelola-barang" class="view-section hidden">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        <h2 class="text-xl font-bold mb-4">Input/Edit Barang</h2>
+                        <form id="formBarang" class="space-y-4">
+                            <input type="hidden" id="editId">
+                            <div>
+                                <label class="block text-sm mb-1">SKU / Kode</label>
+                                <input type="text" id="itemSku" required class="w-full p-2 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-1">Nama Barang</label>
+                                <input type="text" id="itemName" required class="w-full p-2 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-1">HPP (Harga Modal)</label>
+                                <input type="number" id="itemHpp" required class="w-full p-2 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-1">Harga Jual Default</label>
+                                <input type="number" id="itemPrice" required class="w-full p-2 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600 outline-none">
+                            </div>
+                            <div>
+                                <label class="block text-sm mb-1">Stok Awal</label>
+                                <input type="number" id="itemStock" required class="w-full p-2 border rounded bg-gray-50 dark:bg-gray-700 dark:border-gray-600 outline-none">
+                            </div>
+                            <div class="flex gap-2 pt-2">
+                                <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition">Simpan</button>
+                                <button type="button" id="btnResetForm" class="flex-1 bg-gray-300 dark:bg-gray-600 hover:bg-gray-400 dark:hover:bg-gray-500 font-bold py-2 rounded transition">Batal</button>
+                            </div>
+                        </form>
+                    </div>
+                    <div class="md:col-span-2 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 overflow-hidden flex flex-col">
+                        <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 gap-2">
+                            <h2 class="text-xl font-bold">Daftar Kelola Barang</h2>
+                            <div class="bg-blue-50 dark:bg-blue-900/40 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg text-sm">
+                                <span class="text-gray-500 dark:text-gray-400">Total Nilai Modal:</span>
+                                <span id="totalModalBarang" class="font-bold text-blue-600 dark:text-blue-400">Rp 0</span>
+                            </div>
+                        </div>
+                        <div class="overflow-y-auto flex-grow">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-50 dark:bg-gray-700 text-sm uppercase">
+                                        <th class="p-3 border-b dark:border-gray-600">SKU / Nama</th>
+                                        <th class="p-3 border-b dark:border-gray-600">HPP & Jual</th>
+                                        <th class="p-3 border-b dark:border-gray-600">Stok</th>
+                                        <th class="p-3 border-b dark:border-gray-600 text-right">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="kelolaTableBody" class="text-sm divide-y dark:divide-gray-700">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="view-laporan" class="view-section hidden space-y-6">
+                <div class="flex justify-between items-center bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-200 dark:border-gray-700 flex-wrap gap-4">
+                    <h2 class="text-xl font-bold">Dashboard & Laporan</h2>
+                    <div class="flex gap-2 flex-wrap">
+                        <button id="btnResetLaporan" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow flex items-center gap-1.5">
+                            <i class="fas fa-user-shield"></i> Reset Laporan
+                        </button>
+                        <button id="btnExportExcel" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow">
+                            <i class="fas fa-file-excel mr-1"></i> Excel
+                        </button>
+                        <button id="btnExportPdf" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition shadow">
+                            <i class="fas fa-file-pdf mr-1"></i> PDF
+                        </button>
+                    </div>
+                </div>
+
+                <div id="reportContainer" class="space-y-6">
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-3 text-blue-600 dark:text-blue-400 font-bold border-b dark:border-gray-700 pb-2">
+                                    <i class="fas fa-calendar-day"></i> <span>Analisis Harian</span>
+                                </div>
+                                <div class="space-y-2.5">
+                                    <div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Penjualan:</span><span id="dayOmset" class="font-bold">Rp 0</span></div>
+                                    <div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Modal Terjual:</span><span id="dayHpp" class="font-bold text-orange-500">Rp 0</span></div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-3 border-t dark:border-gray-700">
+                                <div class="flex justify-between items-center mb-1"><span class="font-bold text-sm">Laba Bersih:</span><span id="dayLaba" class="font-extrabold text-green-600 dark:text-green-400 text-base">Rp 0</span></div>
+                                <div class="flex justify-between items-center text-xs text-gray-400"><span class="italic">Margin:</span><span id="dayMargin" class="font-bold text-purple-500">0%</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-3 text-teal-600 dark:text-teal-400 font-bold border-b dark:border-gray-700 pb-2">
+                                    <i class="fas fa-calendar-week"></i> <span>Analisis Mingguan</span>
+                                </div>
+                                <div class="space-y-2.5">
+                                    <div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Penjualan:</span><span id="weekOmset" class="font-bold">Rp 0</span></div>
+                                    <div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Modal Terjual:</span><span id="weekHpp" class="font-bold text-orange-500">Rp 0</span></div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-3 border-t dark:border-gray-700">
+                                <div class="flex justify-between items-center mb-1"><span class="font-bold text-sm">Laba Bersih:</span><span id="weekLaba" class="font-extrabold text-green-600 dark:text-green-400 text-base">Rp 0</span></div>
+                                <div class="flex justify-between items-center text-xs text-gray-400"><span class="italic">Margin:</span><span id="weekMargin" class="font-bold text-purple-500">0%</span></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm flex flex-col justify-between">
+                            <div>
+                                <div class="flex items-center gap-2 mb-3 text-purple-600 dark:text-purple-400 font-bold border-b dark:border-gray-700 pb-2">
+                                    <i class="fas fa-calendar-alt"></i> <span>Analisis Bulanan</span>
+                                </div>
+                                <div class="space-y-2.5">
+                                    <div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Penjualan:</span><span id="monthOmset" class="font-bold">Rp 0</span></div>
+                                    <div class="flex justify-between text-sm"><span class="text-gray-500 dark:text-gray-400">Modal Terjual:</span><span id="monthHpp" class="font-bold text-orange-500">Rp 0</span></div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-3 border-t dark:border-gray-700">
+                                <div class="flex justify-between items-center mb-1"><span class="font-bold text-sm">Laba Bersih:</span><span id="monthLaba" class="font-extrabold text-green-600 dark:text-green-400 text-base">Rp 0</span></div>
+                                <div class="flex justify-between items-center text-xs text-gray-400"><span class="italic">Margin:</span><span id="monthMargin" class="font-bold text-purple-500">0%</span></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+                        <h3 class="text-lg font-bold mb-4 pb-2 border-b dark:border-gray-700">Riwayat Transaksi</h3>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-gray-100 dark:bg-gray-700 text-sm uppercase">
+                                        <th class="p-3 border-b dark:border-gray-600">Waktu</th>
+                                        <th class="p-3 border-b dark:border-gray-600">ID Transaksi</th>
+                                        <th class="p-3 border-b dark:border-gray-600">Pelanggan</th>
+                                        <th class="p-3 border-b dark:border-gray-600">Total Item</th>
+                                        <th class="p-3 border-b dark:border-gray-600 font-bold">Total Akhir</th>
+                                        <th class="p-3 border-b dark:border-gray-600 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="riwayatTableBody" class="text-sm divide-y dark:divide-gray-700">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
